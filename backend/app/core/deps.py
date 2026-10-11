@@ -1,27 +1,14 @@
-import logging
-import sys
-import structlog
+from typing import Annotated
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_db
+from app.core.security import get_current_user, require_role
+from app.models.user import User, UserRole
 
-def configure_logging(debug: bool = False) -> None:
-    level = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level)
-
-    structlog.configure(
-        processors=[
-            structlog.contextvars.merge_contextvars,
-            structlog.processors.add_log_level,
-            structlog.processors.StackInfoRenderer(),
-            structlog.dev.set_exc_info,
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer(),
-        ],
-        wrapper_class=structlog.make_filtering_bound_logger(level),
-        context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
-        cache_logger_on_first_use=True,
-    )
-
-
-def get_logger(name: str):
-    return structlog.get_logger(name)
+# Type aliases for dependency injection
+DbSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
+ContributorUser = Annotated[User, Depends(require_role(UserRole.CONTRIBUTOR, UserRole.REVIEWER, UserRole.ADMIN))]
+ReviewerUser = Annotated[User, Depends(require_role(UserRole.REVIEWER, UserRole.ADMIN))]
+AdminUser = Annotated[User, Depends(require_role(UserRole.ADMIN))]
