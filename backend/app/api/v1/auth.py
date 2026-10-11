@@ -1,7 +1,14 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
-from app.core.deps import DbSession
-from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
+
+from app.core.deps import DbSession, CurrentUser
+from app.core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+)
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, LoginRequest, TokenPair
 
@@ -57,11 +64,5 @@ async def refresh(refresh_token: str, db: DbSession) -> TokenPair:
 
 
 @router.get("/me", response_model=UserRead)
-async def me(user: UserRead = None, db: DbSession = None) -> UserRead:
-    from app.core.deps import CurrentUser
-    raise HTTPException(status_code=500, detail="Use /me with dependency")
-
-
-@router.get("/profile", response_model=UserRead)
-async def profile(db: DbSession, user=__import__("fastapi").Depends(__import__("app.core.security", fromlist=["get_current_user"]).get_current_user)) -> UserRead:
+async def me(user: CurrentUser) -> UserRead:
     return UserRead.model_validate(user)
