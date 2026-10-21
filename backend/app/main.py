@@ -46,15 +46,20 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# 🔧 FIXED: strip trailing slash + allow all headers + add PUT method
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[str(settings.FRONTEND_URL)],
+    allow_origins=[str(settings.FRONTEND_URL).rstrip("/")],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
+
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"] if settings.DEBUG else [settings.BACKEND_URL.host])
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"] if settings.DEBUG else [settings.BACKEND_URL.host],
+)
 
 app.include_router(api_router)
 
