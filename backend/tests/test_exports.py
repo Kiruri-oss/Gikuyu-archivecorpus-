@@ -75,3 +75,50 @@ async def test_exports_require_role_and_only_include_explicitly_permitted_record
 
     forbidden = await client.get("/api/v1/exports/jsonl", headers=auth_headers)
     assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_cc0_export_filter_excludes_cc_by_records(db_session):
+    from app.models.source import Source, SourceStatus, SourceType
+    from app.models.text_record import TextRecord
+    from app.services.export import export_service
+
+    source = Source(
+        url="test://cc0-filter-source",
+        domain="test",
+        source_type=SourceType.USER_UPLOAD,
+        status=SourceStatus.APPROVED,
+    )
+    db_session.add(source)
+    await db_session.flush()
+
+    for title, body, licence in (
+        ("CC0 proverb", "Nĩ wega.", "CC0"),
+        ("CC BY proverb", "Mũciĩ.", "CC-BY"),
+    ):
+        db_session.add(TextRecord(
+            source_id=source.id,
+            title=title,
+            body=body,
+            language_code="ki",
+            sha256=uuid.uuid4().hex,
+            license=licence,
+            allow_public_display=True,
+            allow_research_use=True,
+            allow_ai_training=True,
+            allow_commercial_use=True,
+        ))
+    await db_session.commit()
+
+    lines = [line async for line in export_service.export_jsonl(
+        db_session, purpose="ai_training", license_filter="cc0"
+    )]
+    assert len(lines) == 1
+    assert json.loads(lines[0])["license"] == "CC0"
+
+    csv_data = await export_service.export_csv(
+        db_session, purpose="ai_training", license_filter="cc0"
+    )
+    rows = list(csv.DictReader(csv_data.splitlines()))
+    assert len(rows) == 1
+    assert rows[0]["license"] == "CC0"
