@@ -7,6 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/languages`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${baseUrl}/search`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${baseUrl}/orthography`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/transcribe`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${baseUrl}/contribute`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${baseUrl}/research`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${baseUrl}/saved`, changeFrequency: "monthly", priority: 0.3 },
