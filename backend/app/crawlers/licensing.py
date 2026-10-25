@@ -23,11 +23,11 @@ class OpenLicence:
 
 
 _ALLOWED_MARKERS: tuple[tuple[tuple[str, ...], OpenLicence], ...] = (
-    (("creativecommons.org/publicdomain/zero/1.0", "cc0 1.0", "cc0-1.0"),
+    (("cc0 1.0", "cc0-1.0"),
      OpenLicence("CC0-1.0", "https://creativecommons.org/publicdomain/zero/1.0/", True, True, True)),
-    (("creativecommons.org/licenses/by/4.0", "cc by 4.0", "cc-by-4.0"),
+    (("cc by 4.0", "cc-by-4.0"),
      OpenLicence("CC-BY-4.0", "https://creativecommons.org/licenses/by/4.0/", True, True, True)),
-    (("creativecommons.org/licenses/by/3.0", "cc by 3.0", "cc-by-3.0"),
+    (("cc by 3.0", "cc-by-3.0"),
      OpenLicence("CC-BY-3.0", "https://creativecommons.org/licenses/by/3.0/", True, True, True)),
     (("public domain", "public-domain", "pd mark"),
      OpenLicence("Public Domain (explicitly stated)", "", True, True, True)),
@@ -48,7 +48,7 @@ def detect_open_licence(html: str, page_url: str) -> OpenLicence | None:
         href = tag.get("href", "")
         content = tag.get("content", "")
         text = tag.get_text(" ", strip=True) if hasattr(tag, "get_text") else ""
-        value = " ".join(str(part) for part in [href, content, text] if part)
+        value = " ".join(str(part) for part in [content, text] if part).lower()
         is_rights_field = (
             "license" in rel or "licence" in rel
             or tag.get("name", "").lower() in {"license", "licence", "dc.rights", "dcterms.license", "rights"}
@@ -62,6 +62,27 @@ def detect_open_licence(html: str, page_url: str) -> OpenLicence | None:
             candidates.append((node.get_text(" ", strip=True).lower(), ""))
 
     for candidate, candidate_url in candidates:
+        # A Creative Commons URL is trusted only when the actual hostname and
+        # path match an accepted licence; a lookalike URL must never pass by substring.
+        declared_url = candidate_url or (candidate if candidate.startswith(("http://", "https://")) else "")
+        if declared_url:
+            parsed = urlparse(declared_url)
+            if parsed.hostname in {"creativecommons.org", "www.creativecommons.org"}:
+                path = parsed.path.rstrip("/")
+                cc_paths = {
+                    "/publicdomain/zero/1.0": _ALLOWED_MARKERS[0][1],
+                    "/licenses/by/4.0": _ALLOWED_MARKERS[1][1],
+                    "/licenses/by/3.0": _ALLOWED_MARKERS[2][1],
+                }
+                licence = cc_paths.get(path)
+                if licence:
+                    return OpenLicence(
+                        name=licence.name,
+                        url=declared_url,
+                        permits_research=licence.permits_research,
+                        permits_ai_training=licence.permits_ai_training,
+                        permits_commercial_use=licence.permits_commercial_use,
+                    )
         for markers, licence in _ALLOWED_MARKERS:
             if any(marker in candidate for marker in markers):
                 return OpenLicence(
