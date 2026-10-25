@@ -70,8 +70,7 @@ class BaseCrawler:
         return parser
 
     async def _allowed_by_robots(self, url: str) -> bool:
-        if not settings.CRAWLER_RESPECT_ROBOTS:
-            return True
+        # This corpus hunter always honours robots.txt; configuration cannot disable it.
         parser = await self._robots_for(url)
         return parser is not None and parser.can_fetch(settings.CRAWLER_USER_AGENT, url)
 
@@ -95,7 +94,11 @@ class BaseCrawler:
                                 location = response.headers.get("location")
                                 if not location:
                                     return None
-                                current_url = urljoin(current_url, location)
+                                redirect_url = urljoin(current_url, location)
+                                if urlparse(redirect_url).hostname != urlparse(current_url).hostname:
+                                    logger.warning("crawler.cross_host_redirect_blocked", source=current_url, target=redirect_url)
+                                    return None
+                                current_url = redirect_url
                                 continue
                             if response.status_code >= 400:
                                 logger.warning("crawler.http_error", url=current_url, status=response.status_code)
