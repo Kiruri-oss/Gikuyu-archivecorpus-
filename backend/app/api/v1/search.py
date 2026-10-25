@@ -23,9 +23,9 @@ async def search(
 ) -> dict:
     """Search approved public corpus records directly in PostgreSQL.
 
-    PostgreSQL search is the baseline so the archive does not require a separate
-    Meilisearch service to operate. The optional index remains an acceleration path
-    for deployments that configure it.
+    PostgreSQL is the source of truth and search path for this endpoint, so the
+    archive does not require a separate Meilisearch service to operate. Optional
+    Meilisearch indexing remains available for other clients and future scale-out.
     """
     query = q.strip()
     if len(query) < 2:
