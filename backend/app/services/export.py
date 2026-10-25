@@ -56,7 +56,7 @@ class ExportService:
             select(Segment, Media, Source)
             .join(Media, Segment.media_id == Media.id)
             .join(Source, Media.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose), _license_filter(Media, license_filter))
+            .where(Source.status == SourceStatus.APPROVED, Media.language_code == "ki", Media.allow_public_display.is_(True), _permission_filter(Media, purpose), _license_filter(Media, license_filter))
         )
         if dialect:
             stmt = stmt.where(Media.dialect == dialect)
@@ -84,7 +84,7 @@ class ExportService:
         text_stmt = (
             select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose), _license_filter(TextRecord, license_filter))
+            .where(Source.status == SourceStatus.APPROVED, TextRecord.language_code == "ki", TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose), _license_filter(TextRecord, license_filter))
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
