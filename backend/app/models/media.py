@@ -20,6 +20,7 @@ class Media(Base, TimestampMixin):
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sources.id", ondelete="CASCADE"), index=True)
     kind: Mapped[MediaKind] = mapped_column(Enum(MediaKind), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
+    language_code: Mapped[str] = mapped_column(String(10), nullable=False, default="ki", server_default="ki", index=True)
     speaker: Mapped[str | None] = mapped_column(String(200))
     dialect: Mapped[str | None] = mapped_column(String(100), index=True)
     county: Mapped[str | None] = mapped_column(String(100))
