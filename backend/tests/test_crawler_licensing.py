@@ -1,4 +1,4 @@
-from app.crawlers.licensing import detect_open_licence, is_safe_http_url
+from app.crawlers.licensing import canonicalize_url, detect_open_licence, is_safe_http_url
 
 
 def test_detects_explicit_cc0_license_link():
@@ -60,3 +60,7 @@ def test_rejects_non_http_and_obvious_private_urls():
 
 def test_accepts_public_https_url():
     assert is_safe_http_url("https://example.org/open-data") is True
+
+
+def test_canonicalize_url_removes_fragment_and_default_port():
+    assert canonicalize_url("HTTPS://Example.ORG:443/path?q=1#section") == "https://example.org/path?q=1"
