@@ -69,6 +69,8 @@ async def review_source(
     media_records = media_result.scalars().all()
     if payload.status == SourceStatus.APPROVED and any(not record.allow_public_display for record in text_records):
         raise HTTPException(status_code=422, detail="The contributor has not consented to public display of this text.")
+    if payload.status == SourceStatus.APPROVED and any(record.language_code != "ki" for record in text_records):
+        raise HTTPException(status_code=422, detail="Only Gĩkũyũ (Kikuyu) text records may be approved into this archive.")
     if payload.status == SourceStatus.APPROVED and any(not record.allow_public_display for record in media_records):
         raise HTTPException(status_code=422, detail="The contributor has not consented to public display of this media.")
     source.status = payload.status
