@@ -3,6 +3,7 @@ import json
 import uuid
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 
 from app.core.deps import DbSession, CurrentUser
@@ -25,6 +26,7 @@ async def list_text_records(
     offset = max(0, offset)
     stmt = (
         select(TextRecord)
+        .options(selectinload(TextRecord.source))
         .join(Source, TextRecord.source_id == Source.id)
         .where(Source.status == SourceStatus.APPROVED)
         .order_by(TextRecord.created_at.desc())
@@ -90,6 +92,7 @@ async def create_text_record(
 
     record = TextRecord(
         source_id=source.id,
+        source=source,
         contributor_id=user.id,
         title=payload.title,
         body=normalized_body,
