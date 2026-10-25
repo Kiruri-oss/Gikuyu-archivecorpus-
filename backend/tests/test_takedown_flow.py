@@ -149,3 +149,64 @@ async def test_takedown_keeps_media_row_when_object_storage_cleanup_fails(
     await db_session.refresh(source)
     assert source.status == SourceStatus.TAKEN_DOWN
     assert await db_session.get(Media, media.id) is not None
+
+
+@pytest.mark.asyncio
+async def test_rejecting_multiple_takedown_requests_restores_source_only_after_last_rejection(
+    client, db_session
+):
+    source = Source(
+        url="https://publisher.example/reported-text",
+        domain="publisher.example",
+        source_type=SourceType.WEB,
+        status=SourceStatus.APPROVED,
+        license="CC-BY",
+        raw_metadata="{}",
+        reviewer_notes="original review note",
+    )
+    db_session.add(source)
+    await db_session.commit()
+
+    payload = {
+        "url": source.url,
+        "requester_name": "Rights holder",
+        "requester_email": "rights@example.com",
+        "reason": "I own this material and request its removal from the archive.",
+    }
+    first = await client.post("/api/v1/takedowns", json=payload)
+    second = await client.post("/api/v1/takedowns", json=payload)
+    assert first.status_code == 201
+    assert second.status_code == 201
+
+    await db_session.refresh(source)
+    assert source.status == SourceStatus.PENDING
+    assert source.reviewer_notes.startswith("[takedown hold]")
+
+    admin = User(
+        email="multi-takedown-admin@example.com",
+        full_name="Takedown Admin",
+        hashed_password=hash_password("SecureAdminPass123!"),
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+    db_session.add(admin)
+    await db_session.commit()
+    token = create_access_token(str(admin.id), admin.role.value)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    first_rejection = await client.post(
+        f"/api/v1/takedowns/{first.json()['id']}/reject",
+        headers=headers,
+    )
+    assert first_rejection.status_code == 200
+    await db_session.refresh(source)
+    assert source.status == SourceStatus.PENDING
+
+    second_rejection = await client.post(
+        f"/api/v1/takedowns/{second.json()['id']}/reject",
+        headers=headers,
+    )
+    assert second_rejection.status_code == 200
+    await db_session.refresh(source)
+    assert source.status == SourceStatus.APPROVED
+    assert source.reviewer_notes == "original review note"
