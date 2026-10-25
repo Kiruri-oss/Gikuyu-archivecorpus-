@@ -1,65 +1,17 @@
-"use client";
-
-import { useState } from "react";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { getAccessToken } from "@/lib/auth";
-
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+import Link from "next/link";
 
 export default function ResearcherPage() {
-  const [dialect, setDialect] = useState("");
-  const [downloading, setDownloading] = useState<"jsonl" | "csv" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const download = async (format: "jsonl" | "csv") => {
-    setDownloading(format);
-    setError(null);
-    try {
-      const path = `/api/v1/exports/${format}${dialect ? `?dialect=${encodeURIComponent(dialect)}` : ""}`;
-      const token = getAccessToken();
-      const res = await fetch(`${API_URL}${path}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null);
-        throw new Error(payload?.detail ?? `Export unavailable (HTTP ${res.status}).`);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `gikuyu-archive.${format}`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Download failed");
-    } finally {
-      setDownloading(null);
-    }
-  };
-
   return (
-    <ProtectedRoute>
-      <div className="max-w-xl mx-auto py-8 space-y-6">
-        <h1 className="text-2xl font-bold">Researcher Exports</h1>
-        <p className="text-gray-600 text-sm">
-          Export datasets for ASR, TTS, MT, or LLM training. Licence metadata
-          is preserved per row. Respect NC and Restricted licences.
+    <div className="mx-auto max-w-2xl space-y-5 py-10">
+      <h1 className="text-3xl font-bold text-earth-900">Researcher exports</h1>
+      <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950">
+        <h2 className="font-semibold">Curated dataset exports are not enabled</h2>
+        <p className="mt-2 leading-7">
+          Search results are links to third-party public sources, not records that have been collected, reviewed, or cleared for dataset redistribution.
+          CSV and JSONL exports will remain disabled until persistent archive storage, source-level licence tracking, and export filters are implemented and tested.
         </p>
-        <label className="block">
-          <span className="text-sm font-medium">Dialect filter (optional)</span>
-          <input type="text" value={dialect} onChange={(e) => setDialect(e.target.value)} placeholder="Ki-Muranga" className="w-full p-3 border rounded-lg mt-1" />
-        </label>
-        <div className="flex gap-3">
-          <button type="button" onClick={() => download("jsonl")} disabled={downloading !== null} className="flex-1 py-3 bg-earth-500 text-white rounded-lg disabled:opacity-50">
-            {downloading === "jsonl" ? "..." : "Download JSONL"}
-          </button>
-          <button type="button" onClick={() => download("csv")} disabled={downloading !== null} className="flex-1 py-3 border border-earth-500 text-earth-500 rounded-lg disabled:opacity-50">
-            {downloading === "csv" ? "..." : "Download CSV"}
-          </button>
-        </div>
-        {error && <p role="alert" className="text-red-600">{error}</p>}
       </div>
-    </ProtectedRoute>
+      <Link href="/search" className="inline-flex rounded-lg bg-earth-500 px-5 py-3 font-medium text-white">Search public sources</Link>
+    </div>
   );
 }

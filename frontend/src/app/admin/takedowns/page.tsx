@@ -1,71 +1,14 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { api } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
-import type { Takedown } from "@/types";
+import Link from "next/link";
 
 export default function TakedownAdminPage() {
-  const [takedowns, setTakedowns] = useState<Takedown[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = async () => {
-    try {
-      const data = await api.get<Takedown[]>("/api/v1/takedowns");
-      setTakedowns(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Load failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  const action = async (id: string) => {
-    await api.post(`/api/v1/takedowns/${id}/action`, { admin_notes: "Actioned via admin UI" });
-    await load();
-  };
-
   return (
-    <ProtectedRoute>
-      <div className="py-8 space-y-6">
-        <h1 className="text-2xl font-bold">Takedowns</h1>
-        <p className="text-sm text-gray-600">
-          Content removed within 72 hours of valid request. Tombstone preserved for audit.
-        </p>
-
-        {loading && <p className="text-gray-500">Loading...</p>}
-        {error && <p className="text-red-600">{error}</p>}
-
-        <div className="space-y-3">
-          {takedowns.map((t) => (
-            <div key={t.id} className="p-4 border rounded-lg flex justify-between items-start gap-4">
-              <div>
-                <p className="font-medium break-all">{t.url}</p>
-                <p className="text-sm text-gray-600">{t.requester_name}</p>
-                <p className="text-xs text-gray-500">
-                  Status: {t.status} · {formatDate(t.created_at)}
-                </p>
-              </div>
-              {t.status === "received" && (
-                <button
-                  type="button"
-                  onClick={() => action(t.id)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm"
-                >
-                  Action
-                </button>
-              )}
-            </div>
-          ))}
-          {!loading && takedowns.length === 0 && <p className="text-gray-500">No takedowns.</p>}
-        </div>
-      </div>
-    </ProtectedRoute>
+    <div className="mx-auto max-w-2xl space-y-4 py-10">
+      <h1 className="text-3xl font-bold text-earth-900">Source corrections and takedowns</h1>
+      <p className="leading-7 text-gray-600">
+        This deployment discovers and links to public reference pages; it does not host copies of those pages or run a persistent takedown queue.
+        For removal or correction of third-party material, use the original publisher's reporting process. A formal archive-side takedown workflow is not yet enabled.
+      </p>
+      <Link href="/search" className="inline-flex rounded-lg bg-earth-500 px-5 py-3 font-medium text-white">Return to search</Link>
+    </div>
   );
 }
