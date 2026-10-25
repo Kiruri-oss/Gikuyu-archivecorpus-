@@ -1,5 +1,6 @@
 import hashlib
 from typing import BinaryIO
+from boto3.s3.transfer import TransferConfig
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -26,6 +27,46 @@ class StorageService:
     @staticmethod
     def compute_sha256(data: bytes) -> str:
         return hashlib.sha256(data).hexdigest()
+
+    def compute_sha256_file(self, fileobj: BinaryIO, max_bytes: int) -> tuple[str, int]:
+        """Hash an uploaded file in bounded chunks without loading it into RAM."""
+        digest = hashlib.sha256()
+        size = 0
+        fileobj.seek(0)
+        while True:
+            chunk = fileobj.read(8 * 1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > max_bytes:
+                fileobj.seek(0)
+                raise ValueError("File exceeds maximum upload size")
+            digest.update(chunk)
+        fileobj.seek(0)
+        return digest.hexdigest(), size
+
+    def upload_fileobj(self, bucket: str, key: str, fileobj: BinaryIO, content_type: str) -> str:
+        """Multipart-upload a spooled file without buffering the full recording."""
+        fileobj.seek(0)
+        config = TransferConfig(
+            multipart_threshold=8 * 1024 * 1024,
+            multipart_chunksize=8 * 1024 * 1024,
+            max_concurrency=2,
+            use_threads=True,
+        )
+        try:
+            self._client.upload_fileobj(
+                fileobj,
+                bucket,
+                key,
+                ExtraArgs={"ContentType": content_type},
+                Config=config,
+            )
+            logger.info("storage.upload_fileobj", bucket=bucket, key=key)
+            return key
+        except ClientError as exc:
+            logger.error("storage.upload_failed", bucket=bucket, key=key, error=str(exc))
+            raise
 
     def upload(self, bucket: str, key: str, data: bytes, content_type: str) -> str:
         try:
