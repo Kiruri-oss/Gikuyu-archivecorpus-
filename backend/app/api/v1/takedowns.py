@@ -1,22 +1,27 @@
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, status
+
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
-from app.core.deps import DbSession, AdminUser
-from app.models.takedown import Takedown, TakedownStatus
-from app.models.media import Media
-from app.models.source import Source
-from app.schemas.takedown import TakedownCreate, TakedownRead
-from app.services.storage import storage_service
-from app.services.indexing import search_index
 from app.core.config import get_settings
+from app.core.deps import DbSession, AdminUser
+from app.core.logging import get_logger
+from app.models.media import Media
+from app.models.segment import Segment
+from app.models.source import Source, SourceStatus
+from app.models.takedown import Takedown, TakedownStatus
+from app.models.text_record import TextRecord
+from app.schemas.takedown import TakedownCreate, TakedownRead
+from app.services.indexing import search_index
+from app.services.storage import storage_service
 
 router = APIRouter(prefix="/takedowns", tags=["takedowns"])
 settings = get_settings()
+logger = get_logger(__name__)
 
 
-@router.post("", response_model=TakedownRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=TakedownRead, status_code=201)
 async def submit_takedown(payload: TakedownCreate, db: DbSession) -> TakedownRead:
     takedown = Takedown(
         url=payload.url,
@@ -44,12 +49,37 @@ async def action_takedown(takedown_id: uuid.UUID, db: DbSession, _: AdminUser) -
     source_result = await db.execute(select(Source).where(Source.url == takedown.url))
     source = source_result.scalar_one_or_none()
     if source:
+        # Hide the complete source before cleanup. Public endpoints filter on this
+        # state, so a failed search-index or object-store call cannot keep it listed.
+        source.status = SourceStatus.TAKEN_DOWN
+        await db.flush()
+
         media_result = await db.execute(select(Media).where(Media.source_id == source.id))
         for media in media_result.scalars().all():
-            storage_service.delete(settings.S3_BUCKET_AUDIO, media.file_key)
-            await search_index.delete_document("media", str(media.id))
+            segment_result = await db.execute(select(Segment.id).where(Segment.media_id == media.id))
+            for (segment_id,) in segment_result.all():
+                try:
+                    await search_index.delete_document("segments", str(segment_id))
+                except Exception as exc:
+                    logger.warning("takedown.segment_index_delete_failed", segment_id=str(segment_id), error=str(exc))
+            try:
+                storage_service.delete(settings.S3_BUCKET_AUDIO, media.file_key)
+            except Exception as exc:
+                # Keep the source hidden even if the object store is temporarily down.
+                logger.error("takedown.storage_delete_failed", media_id=str(media.id), error=str(exc))
+            try:
+                await search_index.delete_document("media", str(media.id))
+            except Exception as exc:
+                logger.warning("takedown.media_index_delete_failed", media_id=str(media.id), error=str(exc))
             await db.delete(media)
-        source.status = "taken_down"
+
+        text_result = await db.execute(select(TextRecord).where(TextRecord.source_id == source.id))
+        for record in text_result.scalars().all():
+            try:
+                await search_index.delete_document("texts", str(record.id))
+            except Exception as exc:
+                logger.warning("takedown.text_index_delete_failed", record_id=str(record.id), error=str(exc))
+            await db.delete(record)
 
     takedown.status = TakedownStatus.ACTIONED
     takedown.actioned_at = datetime.now(timezone.utc)
