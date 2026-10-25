@@ -6,10 +6,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: baseUrl, changeFrequency: "weekly", priority: 1 },
     { url: `${baseUrl}/languages`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${baseUrl}/search`, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${baseUrl}/orthography`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/contribute`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/research`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${baseUrl}/saved`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${baseUrl}/about`, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${baseUrl}/contribute`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${baseUrl}/privacy`, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${baseUrl}/takedown`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${baseUrl}/takedown`, changeFrequency: "monthly", priority: 0.4 },
   ];
 }
