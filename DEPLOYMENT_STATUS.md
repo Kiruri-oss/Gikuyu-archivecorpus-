@@ -1,6 +1,6 @@
 # Deployment and product status
 
-Last reviewed: 25 October 2026
+Last reviewed: 26 October 2026
 
 ## Product objective
 
@@ -39,7 +39,7 @@ The licence detector recognises supported explicit declarations such as CC0, CC 
 - Research exports include permission-filtered CSV/JSONL and bounded WAV ZIP bundles of original WAV files (up to 100 per request) with a source/rights manifest. MP3/M4A conversion to WAV is not implemented. Reviewer/admin interfaces are available in the repository for Hunter control, pending-source review and takedown requests. Administrators can queue bounded manual crawls, inspect run status, approve/reject sources, action removal requests, or reject an unsupported request and restore a source hidden solely for that request when no other open request exists. The public takedown intake immediately hides a matching approved source while the request is queued; an administrator action removes matching indexed records and stored media/text where applicable.
 - The homepage now has a daily proverb/riddle slot backed only by approved corpus records and a pseudonymous contributor leaderboard based on approved public contributions. Neither fabricates entries when the backend is absent.
 - PWA files have been added: install manifest, icon, service-worker registration, static-shell caching and an offline fallback that can display device-local saved-reference titles. Live offline behaviour has not yet been tested on a phone.
-These changes have been committed to the repository, but the new checks have not yet been confirmed green. The latest merged commit is `66e4e1f300661d63a1af33f79bfc7a11101690ea`. GitHub Actions run [40241014319](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40241014319) passed 74 backend tests plus frontend typecheck, lint, production build and API smoke tests. This is code/CI verification, not proof of a live production crawl.
+These changes have been committed to the repository, but the new checks have not yet been confirmed green. The latest main commit is `b8b3f3bf4bd6f0be981b79bc0c9d72016cc1c87b`. GitHub Actions run [40241346146](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40241346146) passed 74 backend tests plus frontend typecheck, lint, production build and API smoke tests. This is code/CI verification, not proof of a live production crawl.
 
 ## Still not production-enabled
 
@@ -66,7 +66,7 @@ Each record retains source provenance, detected licence evidence, discovery time
 
 GitHub Actions run [40233670075](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40233670075) passed the frontend typecheck, lint, production build and smoke tests plus 36 backend tests on the merge commit.
 
-A Vercel preview for the Hunter branch reached READY, but it is not the production release. The production deployment remains on an older commit. A manual production deployment attempt for the latest merged main commit was rejected by Vercel with HTTP 402 `payment_required`: the team has exceeded the 100-deployments-per-day API limit, with a 24-hour retry window. No plan upgrade or paid resource was created. A successful CI build is not proof that the latest code is deployed or that external source services are reachable. Direct public-site HTTP testing is restricted from this environment.
+A Vercel preview for the Hunter branch reached READY, but it is not the production release. The production deployment remains on an older commit. A manual production deployment attempt for commit `66e4e1f300661d63a1af33f79bfc7a11101690ea` was rejected by Vercel with HTTP 402 `payment_required`: the team exceeded the 100-deployments-per-day API limit, with a 24-hour retry window. Later main commits are CI-verified but are not deployed. No plan upgrade or paid resource was created. A successful CI build is not proof that the latest code is deployed or that external source services are reachable. Direct public-site HTTP testing is restricted from this environment.
 
 ## Exact activation requirements
 
