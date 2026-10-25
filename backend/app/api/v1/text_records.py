@@ -28,7 +28,7 @@ async def list_text_records(
         select(TextRecord)
         .options(selectinload(TextRecord.source))
         .join(Source, TextRecord.source_id == Source.id)
-        .where(Source.status == SourceStatus.APPROVED)
+        .where(Source.status == SourceStatus.APPROVED, TextRecord.language_code == "ki")
         .order_by(TextRecord.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -46,7 +46,7 @@ async def get_text_record(record_id: uuid.UUID, db: DbSession) -> TextRecordRead
     stmt = (
         select(TextRecord)
         .join(Source, TextRecord.source_id == Source.id)
-        .where(TextRecord.id == record_id, Source.status == SourceStatus.APPROVED)
+        .where(TextRecord.id == record_id, Source.status == SourceStatus.APPROVED, TextRecord.language_code == "ki")
     )
     result = await db.execute(stmt)
     record = result.scalar_one_or_none()
