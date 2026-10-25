@@ -13,6 +13,7 @@ from app.api.v1 import (
     text_records,
     orthography,
     community,
+    hunter,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -28,3 +29,4 @@ api_router.include_router(takedowns.router)
 api_router.include_router(text_records.router)
 api_router.include_router(orthography.router)
 api_router.include_router(community.router)
+api_router.include_router(hunter.router)
