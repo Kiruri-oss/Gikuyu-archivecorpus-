@@ -30,7 +30,7 @@ class CrawlScheduler:
         self.scheduler = AsyncIOScheduler()
         self.web = WebCrawler()
         self.youtube = YouTubeCrawler()
-        self.redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)
+        self.redis = Redis.from_url(str(settings.REDIS_URL), decode_responses=True)
         self._memory_frontier: list[str] = []
         self._memory_visited: set[str] = set()
         self.last_run: dict[str, object] = {"status": "never_run"}
