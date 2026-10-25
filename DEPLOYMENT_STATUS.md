@@ -4,7 +4,7 @@ Last reviewed: 25 October 2026
 
 ## Product objective
 
-Build the largest practical Gĩkũũ (Kikuyu, ISO 639-3: kik) language library. This product is exclusively for Gĩkũũ. Material in other languages is outside the corpus scope. The core product is a corpus: texts, oral recordings, transcripts, translations, annotations, reviewed sources and permissioned research datasets—not a search wrapper.
+Build the largest practical Gĩkũyũ (Kikuyu, ISO 639-3: kik) language library. This product is exclusively for Gĩkũyũ. Material in other languages is outside the corpus scope. The core product is a corpus: texts, oral recordings, transcripts, translations, annotations, reviewed sources and permissioned research datasets—not a search wrapper.
 
 ## Current live release
 
