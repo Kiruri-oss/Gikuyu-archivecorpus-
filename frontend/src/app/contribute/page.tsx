@@ -21,6 +21,7 @@ export default function ContributePage() {
   const [speaker, setSpeaker] = useState("");
   const [speakerConsent, setSpeakerConsent] = useState(false);
   const [languageConfirmed, setLanguageConfirmed] = useState(false);
+  const [textLanguageConfirmed, setTextLanguageConfirmed] = useState(false);
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [archiveConsent, setArchiveConsent] = useState(false);
   const [publishConsent, setPublishConsent] = useState(false);
@@ -66,7 +67,7 @@ export default function ContributePage() {
         consent_to_archive: archiveConsent,
         confirm_rights: rightsConfirmed,
         speaker_consent_confirmed: kind === "audio" ? speakerConsent : false,
-        language_confirmed: kind === "audio" ? languageConfirmed : true,
+        language_confirmed: kind === "audio" ? languageConfirmed : textLanguageConfirmed,
         consent_to_publish: publishConsent,
         allow_research_use: researchConsent,
         allow_ai_training: aiConsent,
@@ -142,6 +143,7 @@ export default function ContributePage() {
           <legend className="px-1 font-semibold text-earth-900">Rights and consent</legend>
           <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={rightsConfirmed} onChange={(e) => setRightsConfirmed(e.target.checked)} required className="mt-1" /><span>I have the right to contribute this material and have not knowingly included material I am not authorised to submit.</span></label>
           <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={archiveConsent} onChange={(e) => setArchiveConsent(e.target.checked)} required className="mt-1" /><span>I consent to the archive storing this contribution for review.</span></label>
+          {kind === "text" && <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={textLanguageConfirmed} onChange={(e) => setTextLanguageConfirmed(e.target.checked)} required className="mt-1" /><span>I confirm this contribution is Gĩkũyũ (Kikuyu) language material.</span></label>}
           {kind === "audio" && <p className="rounded-lg border border-earth-500/20 bg-white p-3 text-sm leading-6 text-earth-900">For audio: submit only a recording you own or have permission to share, and confirm that the speaker(s) have consented to being recorded and to the intended use.</p>}
           {kind === "audio" && <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={languageConfirmed} onChange={(e) => setLanguageConfirmed(e.target.checked)} required className="mt-1" /><span>I confirm this recording contains Gĩkũyũ language material.</span></label>}
           {kind === "audio" && <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={speakerConsent} onChange={(e) => setSpeakerConsent(e.target.checked)} required className="mt-1" /><span>I have permission from the speaker(s), and I own this recording or have the right to submit it.</span></label>}
