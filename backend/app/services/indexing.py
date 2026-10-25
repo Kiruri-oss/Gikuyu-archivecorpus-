@@ -9,6 +9,7 @@ settings = get_settings()
 class SearchIndexService:
     INDEX_MEDIA = "media"
     INDEX_SEGMENTS = "segments"
+    INDEX_TEXTS = "texts"
 
     def __init__(self) -> None:
         self.base_url = settings.MEILISEARCH_URL.rstrip("/")
@@ -19,7 +20,7 @@ class SearchIndexService:
 
     async def ensure_indexes(self) -> None:
         async with httpx.AsyncClient(timeout=10) as client:
-            for index in (self.INDEX_MEDIA, self.INDEX_SEGMENTS):
+            for index in (self.INDEX_MEDIA, self.INDEX_SEGMENTS, self.INDEX_TEXTS):
                 resp = await client.get(
                     f"{self.base_url}/indexes/{index}", headers=self.headers
                 )
