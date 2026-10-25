@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DailyProverb } from "@/components/DailyProverb";
+import { ContributorLeaderboard } from "@/components/ContributorLeaderboard";
 
 const archivePillars = [
   {
@@ -43,6 +44,7 @@ export default function HomePage() {
       </section>
 
       <DailyProverb />
+      <ContributorLeaderboard />
 
       <section className="space-y-5">
         <div className="max-w-3xl space-y-2">
