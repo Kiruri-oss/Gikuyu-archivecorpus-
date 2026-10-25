@@ -65,3 +65,21 @@ Each record retains source provenance, detected licence evidence, discovery time
 GitHub Actions run [40233670075](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40233670075) passed the frontend typecheck, lint, production build and smoke tests plus 36 backend tests on the merge commit.
 
 Vercel's status for the merge commit is currently a failure with a build-rate-limit restriction. The last live deployment therefore remains older than the latest source commit. A successful CI build is not proof that the latest code is deployed or that external Wikimedia search is reachable. Direct public-site HTTP testing is restricted from this environment.
+
+## Exact activation requirements
+
+The Vercel project currently has no configured archive-backend environment variables, so the backend cannot be started or reached from production. To activate the corpus, provision a persistent PostgreSQL database, Redis, an S3-compatible object store, and Meilisearch, then deploy the FastAPI service as a persistent container/worker (not a short-lived frontend function).
+
+Required backend environment variables from `backend/app/core/config.py`:
+
+- `SECRET_KEY`: a newly generated, private signing secret.
+- `DATABASE_URL`: PostgreSQL connection string.
+- `REDIS_URL`: Redis connection string.
+- `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET_AUDIO` and optionally `S3_BUCKET_TEXT`, `S3_REGION`, `S3_USE_SSL`.
+- `MEILISEARCH_URL` and `MEILISEARCH_KEY`.
+- `FRONTEND_URL`: the production frontend origin.
+- `APP_ENV=production` and `CRAWLER_ENABLED=true` to run the scheduled Hunter.
+
+After the database is provisioned, run `cd backend && alembic upgrade head` before starting the API. Migration `0005_media_language_code` adds the explicit Gĩkũyũ scope to audio records. In Vercel, set server-only `BACKEND_API_URL` to the backend origin for same-origin proxy requests. Set `NEXT_PUBLIC_API_URL` to the backend origin only when browser-direct requests and large audio uploads are enabled; it must not contain credentials.
+
+No database, storage, Redis, Meilisearch or backend service has been provisioned by this work, and no paid resource was created.
