@@ -1,4 +1,4 @@
-# Gĩkũyũ Archive — African Language Library
+# Gĩkũyũ Archive Corpus
 
 **Live application:** https://gikuyu-archivecorpus.vercel.app  
 **Source code:** https://github.com/Kiruri-oss/Gikuyu-archivecorpus-
@@ -20,6 +20,12 @@ The project is deliberately ambitious. The current deployment is an early **publ
 - A health endpoint at `/api/health`.
 
 The language directory is a starting point for discoverability, not a claim of equal source coverage or community review. Some language Wikipedias may have limited coverage or may be temporarily unavailable.
+
+## Hunter and archive pipeline in the backend
+
+The backend hunter now checks each candidate against `robots.txt`, rejects unsafe local/private targets, and requires a detectable supported open licence before extracting page text. It can follow links through unlicensed pages for discovery only; their content is not archived. Eligible Gĩkũyũ candidates are stored as pending source/text records for review. AI-training and commercial-use flags remain disabled by default. YouTube, news, books and other permission-dependent media are not part of the automatic archive path.
+
+This crawler is groundwork, not a live production collection service: the FastAPI backend still needs its database, storage, indexing and secret configuration deployed and verified before scheduled collection can operate.
 
 ## What is not yet production-enabled
 
