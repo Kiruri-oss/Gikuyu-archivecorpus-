@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import String, Enum, Text, DateTime, Float
+from sqlalchemy import String, Enum, Text, DateTime, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -36,6 +36,10 @@ class Source(Base, TimestampMixin):
     language_confidence: Mapped[float | None] = mapped_column(Float)
     raw_metadata: Mapped[str | None] = mapped_column(Text)
     fetched_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    reviewed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
+    reviewer_notes: Mapped[str | None] = mapped_column(Text)
 
     media = relationship("Media", back_populates="source", cascade="all, delete-orphan")
     texts = relationship("TextRecord", back_populates="source", cascade="all, delete-orphan")
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
