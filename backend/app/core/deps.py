@@ -10,5 +10,6 @@ from app.models.user import User, UserRole
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 ContributorUser = Annotated[User, Depends(require_role(UserRole.CONTRIBUTOR, UserRole.REVIEWER, UserRole.ADMIN))]
+ResearcherUser = Annotated[User, Depends(require_role(UserRole.RESEARCHER, UserRole.REVIEWER, UserRole.ADMIN))]
 ReviewerUser = Annotated[User, Depends(require_role(UserRole.REVIEWER, UserRole.ADMIN))]
 AdminUser = Annotated[User, Depends(require_role(UserRole.ADMIN))]
