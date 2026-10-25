@@ -14,6 +14,7 @@ class MediaCreate(BaseModel):
     consent_to_archive: bool = False
     confirm_rights: bool = False
     speaker_consent_confirmed: bool = False
+    language_confirmed: bool = False
     consent_to_publish: bool = False
     allow_research_use: bool = False
     allow_ai_training: bool = False
