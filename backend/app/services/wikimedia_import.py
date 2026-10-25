@@ -20,26 +20,8 @@ WIKIMEDIA_LICENSE_URL = "https://creativecommons.org/licenses/by-sa/4.0/"
 MAX_ARTICLE_CHARS = 20_000
 
 LANGUAGE_WIKIS: dict[str, tuple[str, str]] = {
-    "ki": ("ki.wikipedia.org", "Kikuyu / Gĩkũyũ"),
-    "sw": ("sw.wikipedia.org", "Swahili / Kiswahili"),
-    "rw": ("rw.wikipedia.org", "Kinyarwanda"),
-    "ha": ("ha.wikipedia.org", "Hausa"),
-    "yo": ("yo.wikipedia.org", "Yorùbá"),
-    "ig": ("ig.wikipedia.org", "Igbo"),
-    "am": ("am.wikipedia.org", "Amharic"),
-    "so": ("so.wikipedia.org", "Somali"),
-    "om": ("om.wikipedia.org", "Oromo"),
-    "zu": ("zu.wikipedia.org", "Zulu"),
-    "xh": ("xh.wikipedia.org", "Xhosa"),
-    "sn": ("sn.wikipedia.org", "Shona"),
-    "ln": ("ln.wikipedia.org", "Lingala"),
-    "lg": ("lg.wikipedia.org", "Luganda"),
-    "st": ("st.wikipedia.org", "Sesotho"),
-    "tn": ("tn.wikipedia.org", "Setswana"),
-    "mg": ("mg.wikipedia.org", "Malagasy"),
-    "af": ("af.wikipedia.org", "Afrikaans"),
-    "bm": ("bm.wikipedia.org", "Bambara"),
-    "wo": ("wo.wikipedia.org", "Wolof"),
+    # This is deliberately Gĩkũyũ-only. The archive is not a multilingual importer.
+    "ki": ("ki.wikipedia.org", "Gĩkũyũ"),
 }
 
 
