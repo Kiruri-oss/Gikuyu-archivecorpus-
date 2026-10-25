@@ -64,6 +64,8 @@ async def create_text_record(
             status_code=422,
             detail="Confirm that you have the right to contribute this text and consent to its storage for review.",
         )
+    if not payload.language_confirmed:
+        raise HTTPException(status_code=422, detail="Confirm that this text is Gĩkũyũ language material.")
 
     normalized_body = payload.body.replace("\r\n", "\n").strip()
     digest = hashlib.sha256(normalized_body.encode("utf-8")).hexdigest()
@@ -85,6 +87,7 @@ async def create_text_record(
             "allow_commercial_use": payload.allow_commercial_use,
             "consent_to_archive": payload.consent_to_archive,
             "rights_confirmed": payload.confirm_rights,
+            "language_confirmed": payload.language_confirmed,
         }),
     )
     db.add(source)
