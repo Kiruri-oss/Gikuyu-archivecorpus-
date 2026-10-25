@@ -4,7 +4,7 @@ Last reviewed: 25 October 2026
 
 ## Product objective
 
-Build the largest practical Gĩkũyũ language library and grow the underlying platform into a major African language library. The core product is a corpus: texts, oral recordings, transcripts, translations, annotations, reviewed sources and permissioned research datasets—not a language-directory demo.
+Build the largest practical Gĩkũyũ (Kikuyu, ISO 639-3: kik) language library. This product is exclusively for Gĩkũyũ—not a multilingual directory or a general African-language platform. English-language pages may be supporting discovery references only, never substitute corpus material. The core product is a corpus: texts, oral recordings, transcripts, translations, annotations, reviewed sources and permissioned research datasets—not a search wrapper.
 
 ## Current live release
 
