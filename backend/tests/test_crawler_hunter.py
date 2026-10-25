@@ -4,7 +4,7 @@ from app.crawlers.web import WebCrawler
 
 
 @pytest.mark.asyncio
-async def test_crawler_discovers_through_unlicensed_index_but_archives_only_licensed(monkeypatch):
+async def test_crawler_discovers_through_unlicensed_index_and_archives_gikuyu_candidates(monkeypatch):
     pages = {
         "https://example.org/": """
             <html><head><title>Index</title></head><body>
@@ -32,19 +32,22 @@ async def test_crawler_discovers_through_unlicensed_index_but_archives_only_lice
 
     results = await crawler.crawl(["https://example.org/"], max_pages=10)
 
-    assert len(results) == 1
-    assert results[0]["url"] == "https://example.org/licensed"
-    assert results[0]["license"] == "CC-BY"
-    assert results[0]["permits_ai_training"] is True
+    assert len(results) == 2
+    by_url = {item["url"]: item for item in results}
+    assert by_url["https://example.org/"]["license"] == "UNKNOWN — licence not stated"
+    assert by_url["https://example.org/"]["permits_ai_training"] is False
+    assert by_url["https://example.org/licensed"]["license"] == "CC-BY"
+    assert by_url["https://example.org/licensed"]["permits_ai_training"] is True
 
 
 @pytest.mark.asyncio
-async def test_crawler_does_not_archive_cc_by_sa(monkeypatch):
+async def test_crawler_archives_cc_by_sa_candidate_but_does_not_grant_reuse(monkeypatch):
     html = """
         <html><head><title>Gĩkũyũ text</title>
         <link rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">
         </head><body><p>Gĩkũyũ content under CC BY-SA 4.0. This content is long enough
-        for the minimum crawler page length check but must not be accepted.</p></body></html>
+        for the minimum crawler page length check but must not be accepted for automatic
+        AI-training or commercial reuse without applying its terms.</p></body></html>
     """
 
     async def fake_fetch(url: str):
@@ -54,13 +57,17 @@ async def test_crawler_does_not_archive_cc_by_sa(monkeypatch):
     crawler = WebCrawler()
     monkeypatch.setattr(crawler, "fetch", fake_fetch)
     results = await crawler.crawl(["https://example.org/"], max_pages=1)
-    assert results == []
+
+    assert len(results) == 1
+    assert results[0]["license"] == "UNKNOWN — licence not stated"
+    assert results[0]["permits_research"] is False
+    assert results[0]["permits_ai_training"] is False
+    assert results[0]["permits_commercial_use"] is False
 
 
 @pytest.mark.asyncio
 async def test_crawler_applies_a_minimum_delay_between_requests_to_the_same_host(monkeypatch):
     import time
-
     from app.crawlers.base import BaseCrawler
 
     monkeypatch.setattr("app.crawlers.base.settings.CRAWLER_MIN_HOST_DELAY_SECONDS", 0.02)
@@ -74,7 +81,6 @@ async def test_crawler_applies_a_minimum_delay_between_requests_to_the_same_host
 @pytest.mark.asyncio
 async def test_crawler_does_not_apply_host_delay_across_different_origins(monkeypatch):
     import time
-
     from app.crawlers.base import BaseCrawler
 
     monkeypatch.setattr("app.crawlers.base.settings.CRAWLER_MIN_HOST_DELAY_SECONDS", 0.05)
