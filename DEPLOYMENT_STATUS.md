@@ -1,6 +1,6 @@
 # Deployment and product status
 
-Last reviewed: 25 October 2026
+Last reviewed: 26 October 2026
 
 ## Product objective
 
@@ -62,6 +62,9 @@ Each record retains source provenance, detected licence evidence, discovery time
 
 ## Verification and deployment
 
-GitHub Actions run [40233670075](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40233670075) passed the frontend typecheck, lint, production build and smoke tests plus 36 backend tests on the merge commit.
+- Earlier GitHub Actions run [40233670075](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40233670075) passed frontend typecheck, lint, production build and smoke tests plus 36 backend tests, but it predates the latest feature work.
+- GitHub Actions run [40238363152](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40238363152) passed the backend test job. Its frontend job failed at TypeScript checking because the PWA layout imported a missing `ServiceWorkerRegister` component. That component has since been added, and the previously observed takedown-page apostrophe lint error was corrected. A follow-up full CI result has not yet been confirmed.
+- Vercel's status remains a failure with a build-rate-limit restriction. The latest source code is not confirmed deployed.
+- No production crawl, live contribution submission, real object-storage deletion, phone-offline session or full end-to-end production workflow has been verified from this environment. Direct public-site HTTP testing is restricted here.
 
-Vercel's status for the merge commit is currently a failure with a build-rate-limit restriction. The last live deployment therefore remains older than the latest source commit. A successful CI build is not proof that the latest code is deployed or that external Wikimedia search is reachable. Direct public-site HTTP testing is restricted from this environment.
+A successful backend test job does not prove that the current frontend builds, that the latest code is deployed, or that external source services are reachable. Do not describe the project as production-ready until a current full CI run and a verified deployment succeed.
