@@ -35,6 +35,8 @@ Audio contributors must confirm their authority to submit the recording and conf
 
 The web application is in `frontend/` (Next.js). The API/backend code is in `backend/`; it is not yet connected to a production persistent database, object store, queue, search index or account system in the current Vercel deployment. Uploads, transcription workflows and corpus exports are therefore not live and must not be represented as operational.
 
+The repository also contains an installable PWA manifest, service worker and offline fallback. Offline mode can show device-local saved-reference titles and cached shell assets; live search, uploads, transcription and server records still require a connection.
+
 Before enabling community submissions, configure durable storage and database migrations, authentication and roles, upload limits and malware checks, consent/rights records, moderation and takedown handling, backups, monitoring and tests. Keep credentials in deployment secrets, never in source control.
 For a deployment with a running backend, set `NEXT_PUBLIC_API_URL` to the public API origin so contributor accounts, uploads, transcription, annotations, researcher exports and admin tools can call it. Set the backend's `FRONTEND_URL` to the web origin for CORS. `BACKEND_API_URL` is used by server-side public-reference proxy routes. Without a reachable backend, mutation/export controls remain disabled rather than pretending that content was saved.
 
