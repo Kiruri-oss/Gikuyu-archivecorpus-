@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.crawlers.web import WebCrawler
@@ -12,14 +13,11 @@ from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
 
 logger = get_logger(__name__)
+settings = get_settings()
 
 # The hunter checks robots.txt and an explicit supported open licence before
 # it extracts content. Video and news discovery remains permission-based.
-SEED_URLS = [
-    "https://ki.wikipedia.org/wiki/Main_Page",
-    "https://ki.wiktionary.org/wiki/Main_Page",
-    "https://www.wikidata.org/wiki/Wikidata:Main_Page",
-]
+SEED_URLS = [item.strip() for item in settings.CRAWLER_SEED_URLS.split(",") if item.strip()]
 
 
 class CrawlScheduler:
@@ -56,7 +54,9 @@ class CrawlScheduler:
                         "hunter": "gikuyu-open-source-hunter",
                         "language": item["language"],
                         "title": item["title"],
-                        "license_detection": "automated_candidate_requires_review",
+                        "license_url": item.get("license_url"),
+                        "license_detection": "explicit_metadata_candidate_requires_review",
+                        "review_required": True,
                     }, ensure_ascii=False),
                 )
                 db.add(source)
@@ -73,9 +73,9 @@ class CrawlScheduler:
                     license=str(item["license"]),
                     # Pending source status prevents public display until review.
                     allow_public_display=True,
-                    allow_research_use=True,
-                    allow_ai_training=False,
-                    allow_commercial_use=False,
+                    allow_research_use=bool(item.get("permits_research")),
+                    allow_ai_training=bool(item.get("permits_ai_training")),
+                    allow_commercial_use=bool(item.get("permits_commercial_use")),
                     notes="Automatically discovered candidate. Verify the source licence and content before approval.",
                 )
                 db.add(record)

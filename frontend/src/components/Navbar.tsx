@@ -3,8 +3,8 @@ import Link from "next/link";
 const links = [
   { href: "/languages", label: "The Corpus" },
   { href: "/search", label: "Explore" },
+  { href: "/orthography", label: "Orthography" },
   { href: "/saved", label: "Saved" },
-  { href: "/about", label: "About" },
   { href: "/contribute", label: "Contribute" },
 ];
 

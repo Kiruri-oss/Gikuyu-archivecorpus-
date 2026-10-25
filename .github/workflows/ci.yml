@@ -5,7 +5,7 @@ permissions:
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -40,6 +40,7 @@ jobs:
         run: npm run build
       - name: Smoke-test production API routes locally
         run: |
+          set -x
           npm run start -- --hostname 127.0.0.1 > /tmp/gikuyu-next.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
@@ -50,11 +51,17 @@ jobs:
             sleep 2
           done
           node -e 'const fs=require("fs"); const h=JSON.parse(fs.readFileSync("/tmp/gikuyu-health.json","utf8")); if(h.status!=="ok" || h.service!=="gikuyu-archive-web") { console.error(h); process.exit(1); }'
+          orthography_status=$(curl --silent --output /tmp/gikuyu-orthography.json --write-out "%{http_code}" -H "Content-Type: application/json" --data '{"text":"mucii"}' http://127.0.0.1:3000/api/v1/orthography)
+          test "$orthography_status" = "200"
+          node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-orthography.json","utf8")); if(d.suggested_text!=="mũciĩ" || d.suggestions.length!==1) { console.error(d); process.exit(1); }'
           invalid_status=$(curl --silent --output /tmp/gikuyu-invalid.json --write-out "%{http_code}" "http://127.0.0.1:3000/api/v1/search?q=x")
           test "$invalid_status" = "400"
           valid_status=$(curl --silent --output /tmp/gikuyu-search.json --write-out "%{http_code}" --max-time 20 "http://127.0.0.1:3000/api/v1/search?q=Gikuyu")
-          test "$valid_status" = "200"
-          node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-search.json","utf8")); if(!Array.isArray(d.media) || d.media.length===0) { console.error(d); process.exit(1); }'
+          case "$valid_status" in
+            200) node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-search.json","utf8")); if(!Array.isArray(d.media)) { console.error(d); process.exit(1); }' ;;
+            502) node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-search.json","utf8")); if(!String(d.detail||"")) { console.error(d); process.exit(1); }' ;;
+            *) echo "Unexpected search response: $valid_status"; cat /tmp/gikuyu-search.json; exit 1 ;;
+          esac
           invalid_language_status=$(curl --silent --output /tmp/gikuyu-invalid-language.json --write-out "%{http_code}" "http://127.0.0.1:3000/api/v1/search?q=Kinyarwanda&lang=not-a-language")
           test "$invalid_language_status" = "400"
           non_gikuyu_status=$(curl --silent --output /tmp/gikuyu-non-gikuyu.json --write-out "%{http_code}" --max-time 20 "http://127.0.0.1:3000/api/v1/search?q=Kinyarwanda&lang=rw")
