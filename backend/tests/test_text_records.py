@@ -36,6 +36,7 @@ async def test_text_submission_is_held_for_review_then_published(client, db_sess
         "dialect": "Ki-Murang'a",
         "genre": "oral story",
         "license": "CC BY 4.0",
+        "consent_to_publish": True,
         "allow_research_use": True,
         "allow_ai_training": False,
         "allow_commercial_use": False,
@@ -47,6 +48,7 @@ async def test_text_submission_is_held_for_review_then_published(client, db_sess
     body = submitted.json()
     assert body["language_code"] == "ki"
     assert body["allow_ai_training"] is False
+    assert body["review_status"] == "pending"
 
     public_before_review = await client.get("/api/v1/text-records")
     assert public_before_review.status_code == 200
@@ -78,6 +80,7 @@ async def test_text_submission_rejects_duplicate_content(client, auth_headers):
         "language_code": "ki",
         "license": "CC BY 4.0",
         "consent_to_archive": True,
+        "consent_to_publish": True,
         "confirm_rights": True,
     }
     first = await client.post("/api/v1/text-records", json=payload, headers=auth_headers)
