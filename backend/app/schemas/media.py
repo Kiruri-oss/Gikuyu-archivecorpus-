@@ -40,6 +40,7 @@ class MediaRead(BaseModel):
     genre: str | None
     duration_seconds: float | None
     license: str | None
+    source_url: str | None = None
     allow_public_display: bool
     allow_research_use: bool
     allow_ai_training: bool
