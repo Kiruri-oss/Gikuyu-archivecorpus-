@@ -69,7 +69,7 @@ export default function TakedownPage() {
         <button type="submit" disabled={busy || !backendConfigured} className="rounded-lg bg-earth-900 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Submitting…" : "Submit review request"}</button>
       </form>
 
-      <section className="space-y-3"><h2 className="text-xl font-semibold text-earth-900">What happens next?</h2><p className="leading-7 text-gray-700">When the API is connected, requests are recorded in the archive's review queue. The team can locate the source and record, review the evidence, and record the action taken. Do not send passwords, identity documents or unrelated sensitive information.</p><p className="leading-7 text-gray-700">For material hosted by another publisher, you may also need to contact that publisher directly. A request to this archive cannot remove material from a third-party website.</p></section>
+      <section className="space-y-3"><h2 className="text-xl font-semibold text-earth-900">What happens next?</h2><p className="leading-7 text-gray-700">When the API is connected, requests are recorded in the archive&apos;s review queue. The team can locate the source and record, review the evidence, and record the action taken. Do not send passwords, identity documents or unrelated sensitive information.</p><p className="leading-7 text-gray-700">For material hosted by another publisher, you may also need to contact that publisher directly. A request to this archive cannot remove material from a third-party website.</p></section>
       <Link href="/about" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Read about the current archive scope</Link>
     </article>
   );
