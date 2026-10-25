@@ -18,7 +18,7 @@ This product is exclusively for Gĩkũyũ (Kikuyu, ISO 639-3: kik). It is not a 
 
 ## Intended core modules
 
-1. **Hunter:** crawl relevant public sources, respect robots.txt, record source URL/date/type, inspect explicit rights statements, and archive only material that meets the project's configured rights policy. Unclear rights must be queued for review, not silently treated as open.
+1. **Hunter:** aggressively discover Gĩkũyũ material across publicly reachable websites, archives, catalogues and repositories. Respect robots.txt, record source URL/date/type and any detected licence, and follow relevant cross-domain links under bounded crawl limits. Missing licence metadata is recorded as unknown; it does not silently grant AI-training, commercial or redistribution permission.
 2. **Archive:** persistent records for source metadata, files, language text, audio, transcripts, dialects, orthography, consent and provenance.
 3. **Community contribution:** proverbs, stories, conversations, original writing and eligible literature, with clear consent, ownership/permission declarations and review workflows.
 4. **Transcription and annotation:** time-aligned segments, translation, correction, reviewer status, dialect labels and Gĩkũyũ orthography support including ĩ and ũ.
@@ -27,9 +27,9 @@ This product is exclusively for Gĩkũyũ (Kikuyu, ISO 639-3: kik). It is not a 
 
 ## Rights and community safeguards
 
-The intended default is to collect only material with a verified basis for storage and reuse, such as public-domain material, CC0, CC BY where its terms are followed, and government open data whose terms permit reuse. Website availability alone does not establish permission. Media excerpts and other protected works require an appropriate permission basis. Audio contributors must confirm their authority to submit the recording and obtain the relevant speakers' consent; sensitive or culturally restricted knowledge requires additional care.
+The Hunter is designed as a broad archive with a takedown workflow: publicly reachable Gĩkũyũ material can be collected even when the source has no machine-readable licence statement. Each record retains its source and any licence evidence; missing or unsupported licence metadata is marked unknown, not treated as a reuse grant. Public archive visibility is separate from eligibility for AI-training, commercial or researcher exports, which must follow each record's stored permission flags.
 
-The project should provide a reachable rights-contact and takedown workflow, maintain an audit trail, and act promptly on valid complaints. Any specific legal deadlines and policy wording must be reviewed against applicable Kenyan law before being promised publicly.
+Audio contributors must confirm their authority to submit the recording and confirm that they have permission from the speaker and own or are authorised to submit the recording. Requests to remove material are logged; when actioned, the source is hidden, its stored text/media records are removed, and corresponding search entries are purged. The external publisher's copy is not controlled by this archive.
 
 ## Architecture and current limitations
 
