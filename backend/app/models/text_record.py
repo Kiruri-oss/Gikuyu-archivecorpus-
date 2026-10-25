@@ -33,3 +33,8 @@ class TextRecord(Base, TimestampMixin):
 
     source = relationship("Source", back_populates="texts")
     contributor = relationship("User")
+
+    @property
+    def source_url(self) -> str | None:
+        url = self.source.url if self.source is not None else None
+        return url if url and url.startswith(("https://", "http://")) else None
