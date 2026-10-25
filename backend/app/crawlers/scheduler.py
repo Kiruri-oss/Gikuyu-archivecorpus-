@@ -143,7 +143,7 @@ class CrawlScheduler:
                     "page_budget": page_budget,
                     "error": str(exc)[:1000],
                 }
-                logger.error("scheduler.archive_candidates_failed", error=str(exc), **self.last_run)
+                logger.error("scheduler.archive_candidates_failed", **self.last_run)
                 raise
 
     def start(self) -> None:
