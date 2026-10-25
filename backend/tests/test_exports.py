@@ -1,3 +1,4 @@
+import csv
 import json
 import uuid
 import pytest
@@ -64,6 +65,15 @@ async def test_exports_require_role_and_only_include_explicitly_permitted_record
 
     training_lines = [line async for line in export_service.export_jsonl(db_session, purpose="ai_training")]
     assert training_lines == []
+
+    # CSV export must include the source provenance and must not reference an
+    # undefined variable (the previous implementation failed on the first row).
+    csv_data = await export_service.export_csv(db_session, purpose="research")
+    rows = list(csv.DictReader(csv_data.splitlines()))
+    assert len(rows) == 2
+    assert {row["source_url"] for row in rows} == {"test://export-source"}
+    assert "source_found_at" in rows[0]
+    assert "license_url" in rows[0]
 
     forbidden = await client.get("/api/v1/exports/jsonl", headers=auth_headers)
     assert forbidden.status_code == 403
