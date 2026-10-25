@@ -19,9 +19,9 @@ from app.services.language_detector import language_detector
 
 logger = get_logger(__name__)
 settings = get_settings()
-MAX_PAGE_BYTES = 5 * 1024 * 1024
-MAX_PDF_PAGES = 100
-MAX_EXTRACTED_TEXT_CHARS = 50000
+MAX_PAGE_BYTES = 25 * 1024 * 1024
+MAX_PDF_PAGES = 500
+MAX_EXTRACTED_TEXT_CHARS = 250000
 MAX_REDIRECTS = 5
 
 
