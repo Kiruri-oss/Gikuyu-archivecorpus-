@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -22,6 +23,7 @@ class CrawlScheduler:
         self.scheduler = AsyncIOScheduler()
         self.web = WebCrawler()
         self.last_run: dict[str, object] = {"status": "never_run"}
+        self._run_lock = asyncio.Lock()
 
     async def _archive_candidates(self, candidates: list[dict]) -> dict[str, int]:
         saved_sources = 0
@@ -70,9 +72,6 @@ class CrawlScheduler:
                 await db.flush()
                 saved_sources += 1
 
-                # Keep a provenance record for every discovered source, but never
-                # duplicate identical text or treat an unverified licence as reuse
-                # permission. Pending records are not publicly searchable/exported.
                 if not archive_content or duplicate:
                     continue
 
@@ -104,34 +103,37 @@ class CrawlScheduler:
         }
 
     async def run_web_crawl(self, max_pages: int | None = None) -> dict[str, object]:
-        started_at = datetime.now(timezone.utc).isoformat()
-        self.last_run = {"status": "running", "started_at": started_at}
-        try:
-            results = await self.web.crawl(
-                SEED_URLS,
-                max_pages=max_pages or settings.CRAWLER_MAX_PAGES,
-                max_domains=settings.CRAWLER_MAX_DOMAINS,
-                max_pages_per_domain=settings.CRAWLER_MAX_PAGES_PER_DOMAIN,
-            )
-            counts = await self._archive_candidates(results)
-            self.last_run = {
-                "status": "completed",
-                "started_at": started_at,
-                "completed_at": datetime.now(timezone.utc).isoformat(),
-                "pages_discovered": len(results),
-                **counts,
-            }
-            logger.info("scheduler.web_crawl_complete", **self.last_run)
-            return self.last_run
-        except Exception as exc:
-            self.last_run = {
-                "status": "failed",
-                "started_at": started_at,
-                "failed_at": datetime.now(timezone.utc).isoformat(),
-                "error": str(exc)[:1000],
-            }
-            logger.error("scheduler.web_crawl_failed", error=str(exc))
-            raise
+        if self._run_lock.locked():
+            raise RuntimeError("A hunter run is already in progress.")
+        async with self._run_lock:
+            started_at = datetime.now(timezone.utc).isoformat()
+            self.last_run = {"status": "running", "started_at": started_at}
+            try:
+                results = await self.web.crawl(
+                    SEED_URLS,
+                    max_pages=max_pages or settings.CRAWLER_MAX_PAGES,
+                    max_domains=settings.CRAWLER_MAX_DOMAINS,
+                    max_pages_per_domain=settings.CRAWLER_MAX_PAGES_PER_DOMAIN,
+                )
+                counts = await self._archive_candidates(results)
+                self.last_run = {
+                    "status": "completed",
+                    "started_at": started_at,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "pages_discovered": len(results),
+                    **counts,
+                }
+                logger.info("scheduler.web_crawl_complete", **self.last_run)
+                return self.last_run
+            except Exception as exc:
+                self.last_run = {
+                    "status": "failed",
+                    "started_at": started_at,
+                    "failed_at": datetime.now(timezone.utc).isoformat(),
+                    "error": str(exc)[:1000],
+                }
+                logger.error("scheduler.web_crawl_failed", error=str(exc))
+                raise
 
     def start(self) -> None:
         if not self.scheduler.running:
