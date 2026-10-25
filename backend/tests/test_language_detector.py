@@ -42,3 +42,26 @@ def test_ambiguous_single_word_is_not_auto_classified(monkeypatch):
     language, _ = detector.detect("mũciĩ")
 
     assert language == "unknown"
+
+
+def test_unmarked_ascii_gikuyu_text_is_detected_without_a_model(monkeypatch):
+    detector = LanguageDetector()
+    monkeypatch.setattr(detector, "_load_model", lambda: None)
+
+    language, confidence = detector.detect(
+        "Muthuri na mutumia ni andu a mucii. Ciana ni ciakwa, ngatho ni nyingi."
+    )
+
+    assert language == "ki"
+    assert confidence >= 0.55
+
+
+def test_english_page_mentioning_kikuyu_is_not_enough_to_trigger_detection(monkeypatch):
+    detector = LanguageDetector()
+    monkeypatch.setattr(detector, "_load_model", lambda: None)
+
+    language, _ = detector.detect(
+        "The Kikuyu language and people are important to the history of Kenya."
+    )
+
+    assert language == "unknown"
