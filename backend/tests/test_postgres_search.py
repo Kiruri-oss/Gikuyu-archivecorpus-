@@ -81,6 +81,11 @@ async def test_search_returns_only_approved_public_corpus_records(client, db_ses
     assert payload["texts"][0]["source_url"] == "https://example.org/gikuyu-corpus"
     assert "pending" not in payload["texts"][0]["title"].lower()
 
+    browse = await client.get("/api/v1/search")
+    assert browse.status_code == 200
+    assert browse.json()["source"] == "archive_corpus"
+    assert len(browse.json()["texts"]) == 1
+
 
 @pytest.mark.asyncio
 async def test_search_rejects_whitespace_only_query(client):
