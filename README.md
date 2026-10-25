@@ -3,102 +3,53 @@
 **Live application:** https://gikuyu-archivecorpus.vercel.app  
 **Source code:** https://github.com/Kiruri-oss/Gikuyu-archivecorpus-
 
-## Mission
+## The product
 
-Build an enduring online home for Gĩkũyũ language and cultural knowledge, then extend the infrastructure to African languages broadly. The intended library includes language profiles, vocabulary, stories, oral histories, recordings, time-aligned transcripts, translations, linguistic annotations and responsibly licensed datasets that can support language technology.
+Gĩkũyũ Archive Corpus is intended to become a substantial, searchable digital library for Gĩkũyũ: vocabulary, proverbs, riddles, folklore, literature, oral histories, consent-based audio, time-aligned transcripts, translations, dialect information, orthography review and responsibly licensed AI-training datasets.
 
-The project is deliberately ambitious. The current deployment is an early **public-source discovery layer**, not yet the persistent corpus. The distinction matters: the site must never pretend to have stored a recording or cleared a source for AI training when it has not.
+This is a Gĩkũyũ-first project. Other African languages are not the target of the current product release. English-language references may be used only as supporting discovery sources, not as a substitute for Gĩkũyũ material.
 
-## What is in the current web release
+## What the current deployment actually does
 
-- An initial directory of 20 African language profiles, including Gĩkũyũ, Kiswahili, Kinyarwanda, Hausa, Yorùbá, Igbo, Amharic, Somali, Oromo, Zulu, Xhosa, Shona, Lingala, Luganda, Sesotho, Setswana, Malagasy, Afrikaans, Bambara and Wolof.
-- Language-aware public-reference search against the selected language's Wikipedia plus English Wikipedia; the Kikuyu search also checks Kikuyu Wiktionary.
-- Source details and original-publisher links, with explicit licence reminders.
-- A reading list stored locally in the current browser (up to 200 items; no account sync).
-- About, privacy and source-concern pages, responsive navigation and basic accessibility support.
-- Same-origin API routes with input validation, source-host allow-listing, request timeouts and short-lived caching.
-- A health endpoint at `/api/health`.
+- Searches selected Wikimedia reference sources and links to their original pages.
+- Displays reference details and allows a visitor to save links in that browser.
+- Provides initial project, contribution-status, privacy and takedown information.
+- Does **not** currently store a persistent Gĩkũyũ corpus or accept real audio/text submissions.
 
-The language directory is a starting point for discoverability, not a claim of equal source coverage or community review. Some language Wikipedias may have limited coverage or may be temporarily unavailable.
+## Intended core modules
 
-## Hunter and archive pipeline in the backend
+1. **Hunter:** crawl relevant public sources, respect robots.txt, record source URL/date/type, inspect explicit rights statements, and archive only material that meets the project's configured rights policy. Unclear rights must be queued for review, not silently treated as open.
+2. **Archive:** persistent records for source metadata, files, language text, audio, transcripts, dialects, orthography, consent and provenance.
+3. **Community contribution:** proverbs, stories, conversations, original writing and eligible literature, with clear consent, ownership/permission declarations and review workflows.
+4. **Transcription and annotation:** time-aligned segments, translation, correction, reviewer status, dialect labels and Gĩkũyũ orthography support including ĩ and ũ.
+5. **Researcher portal:** curated, licence-filtered exports, with source-level provenance and separate eligibility checks for text/audio and AI-training use.
+6. **Community participation:** contributor recognition, a proverb/riddle feature only when content is community-submitted or rights-cleared, and correction/takedown processes.
 
-The backend hunter now checks each candidate against `robots.txt`, rejects unsafe local/private targets, and requires a detectable supported open licence before extracting page text. It can follow links through unlicensed pages for discovery only; their content is not archived. Eligible Gĩkũyũ candidates are stored as pending source/text records for review. AI-training and commercial-use flags remain disabled by default. YouTube, news, books and other permission-dependent media are not part of the automatic archive path.
+## Rights and community safeguards
 
-This crawler is groundwork, not a live production collection service: the FastAPI backend still needs its database, storage, indexing and secret configuration deployed and verified before scheduled collection can operate.
+The intended default is to collect only material with a verified basis for storage and reuse, such as public-domain material, CC0, CC BY where its terms are followed, and government open data whose terms permit reuse. Website availability alone does not establish permission. Media excerpts and other protected works require an appropriate permission basis. Audio contributors must confirm their authority to submit the recording and obtain the relevant speakers' consent; sensitive or culturally restricted knowledge requires additional care.
 
-## What is not yet production-enabled
+The project should provide a reachable rights-contact and takedown workflow, maintain an audit trail, and act promptly on valid complaints. Any specific legal deadlines and policy wording must be reviewed against applicable Kenyan law before being promised publicly.
 
-- Persistent archive database and private object storage.
-- Account registration, sign-in and role-based access on the deployed frontend.
-- Recording uploads, community transcript submissions, review queues or annotation workflows on the deployed frontend.
-- A private takedown intake, moderation audit trail and verified corpus exports.
-- Scheduled crawling, backup/recovery tests and production alerts.
+## Architecture and current limitations
 
-The Python FastAPI service under `backend/` contains groundwork for authentication, media uploads, time-aligned segments, reviewer verification, search indexing and CSV/JSONL exports, but it is **not connected to the current Vercel deployment**. It expects configured services and secrets (database, Redis, S3-compatible storage, Meilisearch and secret settings). Do not submit recordings to the live site expecting them to be saved.
+The web application is in `frontend/` (Next.js). The API/backend code is in `backend/`; it is not yet connected to a production persistent database, object store, queue, search index or account system in the current Vercel deployment. Uploads, transcription workflows and corpus exports are therefore not live and must not be represented as operational.
 
-## Technology and checks
+Before enabling community submissions, configure durable storage and database migrations, authentication and roles, upload limits and malware checks, consent/rights records, moderation and takedown handling, backups, monitoring and tests. Keep credentials in deployment secrets, never in source control.
 
-- Next.js App Router, React, TypeScript and Tailwind CSS
-- Wikimedia API endpoints, called server-side through same-origin Next.js routes
-- Vercel hosting
-- GitHub Actions for frontend typecheck, lint, production build, API smoke tests and backend unit tests
+## Development
 
-Local frontend setup:
+Frontend:
 
 ```bash
-git clone https://github.com/Kiruri-oss/Gikuyu-archivecorpus-.git
-cd Gikuyu-archivecorpus-/frontend
+cd frontend
 npm ci
-npm run dev
-```
-
-Frontend checks:
-
-```bash
-npm run typecheck
 npm run lint
 npm run build
 ```
 
-Backend tests (Python 3.11+):
+Backend setup and checks are documented in `backend/pyproject.toml` and the backend README. Use a disposable test database and test storage when running integration tests.
 
-```bash
-cd ../backend
-python -m pip install -e ".[dev]"
-pytest -q
-```
+## Guiding principle
 
-The public-source search needs network access to Wikimedia. Never commit credentials or put secrets in browser-visible environment variables.
-
-## API routes
-
-- `GET /api/health` — web service health and explicit persistence status
-- `GET /api/v1/search?q=...&lang=ki` — language-aware public-source search; language code must be in the supported registry
-- `GET /api/v1/media?limit=30&lang=ki` — default discovery results for a selected language
-- `GET /api/v1/media/{sourceId}` — detail for an allow-listed public source
-- `GET /api/v1/segments/media/{sourceId}` — returns no stored transcript segments for public reference records; there is no persistent community transcript store yet
-
-## Rights, privacy and cultural care
-
-- Public access is not the same as permission to redistribute, commercialise or use material for AI training.
-- Verify the licence and terms at each original publisher before reuse.
-- Contributor consent must specify the intended uses, including whether material can be used in model training or commercial datasets.
-- Keep provenance, language/dialect labels, consent status, licence, reviewer decisions and removal history with each record.
-- Sacred, personal, sensitive or community-restricted knowledge should not be treated as automatically public because it can be digitised.
-- The reading list is saved in browser local storage on one device and can be lost when site data is cleared.
-
-## Product roadmap
-
-1. **Language directory and discovery (current):** profiles and links to public reference sources.
-2. **Persistent core:** database schema, private media storage, identity and permissions, migrations, backups, consent/licence metadata, deletion and audit trails.
-3. **Community corpus:** text entry and import, audio upload, resumable uploads, deduplication, transcription segments, translations and annotation tools.
-4. **Quality and research:** reviewer queues, inter-annotator checks, provenance-aware CSV/JSONL exports, dataset cards and clear use restrictions.
-5. **Language technology and sustainable revenue:** opt-in/licence-specific datasets, paid annotation services or research partnerships, with contributor terms and community benefit defined before sales.
-6. **Scale:** additional languages, source connectors, contributor-led acquisition and AI-assisted workflows only where consent and rights permit.
-
-No paid cloud service or credentials are silently created by this repository. The next genuine blocker to a full archive is the absence of provisioned persistent services and deployment secrets—not lack of ambition or additional interface work.
-
-## Verification caveat
-
-A Vercel deployment marked `READY` proves that the hosting build completed, not that every live route and external source works end-to-end. Check the latest GitHub Actions run and Vercel deployment before treating a newly committed change as verified.
+The objective is not a thin wrapper around external websites. Public-source discovery is only an initial ingestion path. The real product is a durable Gĩkũyũ corpus built from traceable sources, community knowledge shared with consent, high-quality transcription and annotation, and carefully curated datasets.
