@@ -1,3 +1,5 @@
+import pytest
+
 from app.crawlers.base import BaseCrawler
 
 
@@ -21,3 +23,17 @@ def test_rejects_private_and_non_http_targets() -> None:
     assert not BaseCrawler._is_public_http_url("http://localhost/private")
     assert not BaseCrawler._is_public_http_url("file:///etc/passwd")
     assert BaseCrawler._is_public_http_url("https://example.org/public")
+
+
+@pytest.mark.asyncio
+async def test_hunter_rejects_public_hostname_that_resolves_to_private_ip(monkeypatch):
+    import socket
+    from app.crawlers.base import BaseCrawler
+
+    class PrivateDnsLoop:
+        async def getaddrinfo(self, host, port, type):
+            return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("127.0.0.1", port))]
+
+    monkeypatch.setattr("app.crawlers.base.asyncio.get_running_loop", lambda: PrivateDnsLoop())
+    crawler = BaseCrawler()
+    assert await crawler.can_fetch("https://public-looking.example/resource") is False
