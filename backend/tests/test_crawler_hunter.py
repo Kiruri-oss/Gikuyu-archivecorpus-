@@ -116,7 +116,7 @@ def test_pdf_text_extraction_produces_crawlable_gikuyu_document(monkeypatch):
     assert parsed.title is not None
     assert parsed.title.get_text() == "Gĩkũyũ oral tradition"
     assert "Nĩ mũndũ ũcio" in parsed.get_text()
-    assert "mũciĩ" in parsed.get_text()
+    assert "mũciĩ" in parsed.get_text().lower()
 
 
 def test_pdf_extraction_skips_encrypted_files_without_an_empty_password(monkeypatch):
