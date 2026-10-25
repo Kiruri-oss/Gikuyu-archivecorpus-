@@ -121,9 +121,13 @@ class CrawlScheduler:
     async def _archive_youtube_candidates(self, candidates: list[dict]) -> int:
         """Persist discovered public video metadata for later language/content review."""
         saved = 0
+        seen_urls: set[str] = set()
         async with AsyncSessionLocal() as db:
             for item in candidates:
                 url = str(item.get("url") or "").strip()
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
                 if not url.startswith("https://www.youtube.com/watch?v="):
                     continue
                 existing = await db.execute(select(Source.id).where(Source.url == url))
