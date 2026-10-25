@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
-
 type TextRecord = {
   id: string;
   title: string;
@@ -28,7 +26,6 @@ export function DailyProverb() {
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (!API_URL) return;
     let cancelled = false;
     setLoading(true);
     api.get<TextRecord[]>("/api/v1/text-records?language_code=ki&limit=100")
@@ -59,7 +56,7 @@ export function DailyProverb() {
         <p className="mt-3 whitespace-pre-wrap text-lg leading-8 text-gray-800">{record.body}</p>
         <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-600"><span>{record.genre ?? "Community record"}</span>{record.dialect && <span>Dialect: {record.dialect}</span>}{record.license && <span>Licence: {record.license}</span>}</div>
         <Link href={`/texts/${encodeURIComponent(record.id)}`} className="mt-5 inline-flex font-semibold text-earth-700 underline underline-offset-4">Read record details</Link>
-      </> : <p className="mt-3 max-w-2xl leading-7 text-gray-700">{!API_URL ? "This feature will display a daily proverb or riddle from the verified corpus when the production archive API is connected." : loading ? "Finding an approved Gĩkũyũ proverb or riddle…" : loadError ? "The daily record could not be loaded. Try again when the archive is reachable." : count === 0 ? "No approved proverb or riddle is in the connected corpus yet. Contribute a Gĩkũyũ saying or riddle to help build this collection." : "The daily record could not be loaded. Try again when the archive is reachable."}</p>}
+      </> : <p className="mt-3 max-w-2xl leading-7 text-gray-700">{loading ? "Finding an approved Gĩkũyũ proverb or riddle…" : loadError ? "The daily record could not be loaded. Try again when the archive is reachable." : count === 0 ? "No approved proverb or riddle is in the connected corpus yet. Contribute a Gĩkũyũ saying or riddle to help build this collection." : "The daily record could not be loaded. Try again when the archive is reachable."}</p>}
     </section>
   );
 }
