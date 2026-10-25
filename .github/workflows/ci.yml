@@ -50,7 +50,7 @@ jobs:
       - name: Run tests
         env:
           SECRET_KEY: ci-test-secret-key-that-is-long-enough
-          DATABASE_URL: sqlite+aiosqlite:///./ci.db
+          DATABASE_URL: postgresql+asyncpg://gikuyu:gikuyu@localhost:5432/gikuyu_archive
           REDIS_URL: redis://localhost:6379/0
           S3_ENDPOINT: http://localhost:9000
           S3_ACCESS_KEY: test
