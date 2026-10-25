@@ -63,7 +63,8 @@ Each record retains source provenance, detected licence evidence, discovery time
 ## Verification and deployment
 
 - Earlier GitHub Actions run [40233670075](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40233670075) passed frontend typecheck, lint, production build and smoke tests plus 36 backend tests, but it predates the latest feature work.
-- GitHub Actions run [40238363152](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40238363152) passed the backend test job. Its frontend job failed at TypeScript checking because the PWA layout imported a missing `ServiceWorkerRegister` component. That component has since been added, and the previously observed takedown-page apostrophe lint error was corrected. A follow-up full CI result has not yet been confirmed.
+- GitHub Actions run [40238363152](https://github.com/Kiruri-oss/Gikuyu-archivecorpus-/actions/runs/40238363152) passed the backend test job. Its frontend job failed at TypeScript checking because the PWA layout imported a missing `ServiceWorkerRegister` component; that component has since been added.
+- The latest observed frontend run passed typecheck but failed lint on an unescaped apostrophe in the researcher page. That text and its sign-in route were corrected on main after the failed run. The backend test job passed again, including source-visibility and takedown regression tests. A fresh CI run after the researcher-page fix is still required.
 - Vercel's status remains a failure with a build-rate-limit restriction. The latest source code is not confirmed deployed.
 - No production crawl, live contribution submission, real object-storage deletion, phone-offline session or full end-to-end production workflow has been verified from this environment. Direct public-site HTTP testing is restricted here.
 
