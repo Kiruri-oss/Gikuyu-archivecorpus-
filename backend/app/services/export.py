@@ -76,7 +76,7 @@ class ExportService:
         text_stmt = (
             select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
+            .where(Source.status == SourceStatus.APPROVED, TextRecord.language_code == "ki", TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
@@ -135,7 +135,7 @@ class ExportService:
         text_stmt = (
             select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
+            .where(Source.status == SourceStatus.APPROVED, TextRecord.language_code == "ki", TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
