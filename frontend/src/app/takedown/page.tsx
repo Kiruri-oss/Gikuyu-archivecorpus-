@@ -17,6 +17,7 @@ export default function TakedownPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [reason, setReason] = useState("");
+  const [rightsAttested, setRightsAttested] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState<TakedownResponse | null>(null);
@@ -35,13 +36,14 @@ export default function TakedownPage() {
         url: url.trim(),
         requester_name: name.trim(),
         requester_email: email.trim(),
-        reason: reason.trim(),
+        reason: "Rights-holder or authorised-representative attestation: confirmed.\\n\\n" + reason.trim(),
       });
       setReceipt(result);
       setUrl("");
       setName("");
       setEmail("");
       setReason("");
+      setRightsAttested(false);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : "The request could not be submitted. Please try again.");
     } finally {
@@ -65,6 +67,7 @@ export default function TakedownPage() {
         <div className="space-y-2"><label htmlFor="source-url" className="block text-sm font-semibold text-gray-800">Exact source or archive URL</label><input id="source-url" type="url" required maxLength={2000} value={url} onChange={(e) => setUrl(e.target.value)} className="w-full rounded-lg border border-gray-300 p-3" placeholder="https://…" /></div>
         <div className="grid gap-5 sm:grid-cols-2"><div className="space-y-2"><label htmlFor="requester-name" className="block text-sm font-semibold text-gray-800">Your name</label><input id="requester-name" required minLength={2} maxLength={200} value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg border border-gray-300 p-3" /></div><div className="space-y-2"><label htmlFor="requester-email" className="block text-sm font-semibold text-gray-800">Contact email</label><input id="requester-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-gray-300 p-3" /></div></div>
         <div className="space-y-2"><label htmlFor="reason" className="block text-sm font-semibold text-gray-800">Reason and details</label><textarea id="reason" required minLength={10} maxLength={5000} rows={6} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full rounded-lg border border-gray-300 p-3 leading-7" placeholder="Describe the material, your relationship to it, and the correction or action you are requesting." /></div>
+        <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" required checked={rightsAttested} onChange={(e) => setRightsAttested(e.target.checked)} className="mt-1" /><span>I am the rights holder or an authorised representative, and the information in this request is accurate to the best of my knowledge.</span></label>
         {error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm leading-6 text-red-900">{error}</p>}
         <button type="submit" disabled={busy || !backendConfigured} className="rounded-lg bg-earth-900 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Submitting…" : "Submit review request"}</button>
       </form>
