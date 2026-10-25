@@ -29,11 +29,15 @@ class CrawlScheduler:
         saved_sources = 0
         saved_texts = 0
         duplicate_texts = 0
+        refreshed_sources = 0
         async with AsyncSessionLocal() as db:
             for item in candidates:
                 url = str(item["url"])
-                existing = await db.execute(select(Source.id).where(Source.url == url))
-                if existing.scalar_one_or_none():
+                existing_result = await db.execute(select(Source).where(Source.url == url))
+                source = existing_result.scalar_one_or_none()
+
+                # Respect explicit moderation decisions and takedowns on future runs.
+                if source and source.status in (SourceStatus.TAKEN_DOWN, SourceStatus.REJECTED, SourceStatus.APPROVED):
                     continue
 
                 body = str(item.get("text") or "").strip()
@@ -50,29 +54,47 @@ class CrawlScheduler:
                     if item.get("license") not in (None, "", "UNVERIFIED")
                     else "rights_not_detected"
                 )
-                source = Source(
-                    url=url,
-                    domain=url.split("/", 3)[2].lower(),
-                    source_type=SourceType.WEB,
-                    status=SourceStatus.PENDING,
-                    license=str(item.get("license") or "UNVERIFIED")[:100],
-                    language_confidence=float(item.get("confidence") or 0.0),
-                    fetched_at=datetime.now(timezone.utc),
-                    raw_metadata=json.dumps({
-                        "hunter": "gikuyu-open-source-hunter",
-                        "language": item.get("language", "unknown"),
-                        "title": item.get("title", url),
-                        "license_url": item.get("license_url"),
-                        "rights_state": rights_state,
-                        "content_archived": bool(archive_content and not duplicate),
-                        "review_required": True,
-                    }, ensure_ascii=False),
-                )
-                db.add(source)
-                await db.flush()
-                saved_sources += 1
+                metadata = json.dumps({
+                    "hunter": "gikuyu-open-source-hunter",
+                    "language": item.get("language", "unknown"),
+                    "title": item.get("title", url),
+                    "license_url": item.get("license_url"),
+                    "rights_state": rights_state,
+                    "content_archived": bool(archive_content and not duplicate),
+                    "review_required": True,
+                }, ensure_ascii=False)
+
+                if source is None:
+                    source = Source(
+                        url=url,
+                        domain=url.split("/", 3)[2].lower(),
+                        source_type=SourceType.WEB,
+                        status=SourceStatus.PENDING,
+                        license=str(item.get("license") or "UNVERIFIED")[:100],
+                        language_confidence=float(item.get("confidence") or 0.0),
+                        fetched_at=datetime.now(timezone.utc),
+                        raw_metadata=metadata,
+                    )
+                    db.add(source)
+                    await db.flush()
+                    saved_sources += 1
+                else:
+                    # A previously found lead may become licenced later. Refresh
+                    # pending metadata so a future run can ingest eligible content.
+                    source.license = str(item.get("license") or "UNVERIFIED")[:100]
+                    source.language_confidence = float(item.get("confidence") or 0.0)
+                    source.fetched_at = datetime.now(timezone.utc)
+                    source.raw_metadata = metadata
+                    refreshed_sources += 1
+                    await db.flush()
 
                 if not archive_content or duplicate:
+                    continue
+
+                source_text_result = await db.execute(
+                    select(TextRecord.id).where(TextRecord.source_id == source.id)
+                )
+                if source_text_result.scalar_one_or_none():
                     continue
 
                 record = TextRecord(
@@ -85,7 +107,9 @@ class CrawlScheduler:
                     size_bytes=len(body.encode("utf-8")),
                     lang_score=float(item.get("confidence") or 0.0),
                     license=str(item.get("license") or "UNVERIFIED")[:100],
-                    allow_public_display=False,
+                    # The source remains pending, so the public API cannot show
+                    # this record until a reviewer approves the source.
+                    allow_public_display=True,
                     allow_research_use=bool(item.get("permits_research")),
                     allow_ai_training=bool(item.get("permits_ai_training")),
                     allow_commercial_use=bool(item.get("permits_commercial_use")),
@@ -98,6 +122,7 @@ class CrawlScheduler:
             await db.commit()
         return {
             "sources_saved": saved_sources,
+            "sources_refreshed": refreshed_sources,
             "texts_saved": saved_texts,
             "duplicate_texts": duplicate_texts,
         }
