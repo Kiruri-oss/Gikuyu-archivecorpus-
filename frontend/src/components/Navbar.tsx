@@ -6,7 +6,8 @@ const links = [
   { href: "/orthography", label: "Orthography" },
   { href: "/transcribe", label: "Transcribe" },
   { href: "/contribute", label: "Contribute" },
-  { href: "/login", label: "Account" },
+  { href: "/auth/login", label: "Account" },
+  { href: "/researcher", label: "Research" },
 ];
 
 export function Navbar() {
