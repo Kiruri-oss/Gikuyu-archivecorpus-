@@ -34,7 +34,7 @@ def upgrade() -> None:
         sa.Column("language_code", sa.String(16), nullable=False, server_default="ki"),
         sa.Column("dialect", sa.String(100), nullable=True),
         sa.Column("genre", sa.String(100), nullable=True),
-        sa.Column("sha256", sa.String(64), nullable=False, unique=True),
+        sa.Column("sha256", sa.String(64), nullable=False),
         sa.Column("size_bytes", sa.BigInteger(), nullable=True),
         sa.Column("lang_score", sa.Float(), nullable=True),
         sa.Column("license", sa.String(100), nullable=False),
@@ -50,7 +50,7 @@ def upgrade() -> None:
     op.create_index("ix_text_records_language_code", "text_records", ["language_code"])
     op.create_index("ix_text_records_dialect", "text_records", ["dialect"])
     op.create_index("ix_text_records_genre", "text_records", ["genre"])
-    op.create_index("ix_text_records_sha256", "text_records", ["sha256"])
+    op.create_index("ix_text_records_sha256", "text_records", ["sha256"], unique=True)
 
 
 def downgrade() -> None:
