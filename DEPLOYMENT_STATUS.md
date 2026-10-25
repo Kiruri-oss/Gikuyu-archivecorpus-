@@ -14,15 +14,15 @@ The orthography suggestion API and web UI are merged into the repository, but ar
 
 ## Implemented in the repository, not yet production-connected
 
-- A scheduled FastAPI corpus hunter that traverses configured Gĩkũyũ discovery seeds, obeys robots.txt, enforces a per-host delay, bounds page size and redirects, rejects obvious private/local URL targets, and only extracts pages with explicit accepted open-licence evidence. The default catalogue includes Gĩkũyũ Wikimedia sources plus targeted discovery pages at Internet Archive, Open Library, Project Gutenberg, Library of Congress and Wikimedia Commons; each crawl is capped at 500 pages and scheduled every six hours when the backend runs in production.
-- Unlicensed pages may be used for link discovery only; their page text is not extracted into the archive.
-- Eligible Gĩkũyũ candidates are stored in the existing source/text models as pending records with source URL, licence declaration, discovery time, language confidence and reuse flags. Human review is required before public listing.
+- A scheduled FastAPI corpus hunter that traverses configured Gĩkũyũ discovery seeds, obeys robots.txt, enforces a per-host delay, bounds page size and redirects, rejects obvious private/local URL targets, and extracts detected Gĩkũyũ from publicly reachable pages whether or not a machine-readable licence is present. Missing licence metadata is recorded as unknown and never grants downstream reuse permission. The default catalogue includes Gĩkũyũ Wikimedia sources plus targeted discovery pages at Internet Archive, Open Library, Project Gutenberg, Library of Congress and Wikimedia Commons; each crawl is capped at 500 pages and scheduled every six hours when the backend runs in production.
+- The Hunter follows relevant cross-domain links under host and page budgets. Gĩkũyũ text with unknown licence metadata is still archived and labelled unknown; AI-training, commercial and researcher-export permissions remain false unless supported by explicit metadata.
+- Detected Gĩkũyũ records are stored in the source/text models with source URL, detected licence or unknown status, discovery time, language confidence and separate reuse flags. Under the notice-and-takedown model, the archive record is publicly searchable; unknown rights do not qualify for downstream reuse exports.
 - Source and content deduplication, configurable seed hosts and permission-aware research exports.
 - CSV export selects the source row correctly and includes source URL, discovery time and licence URL; JSONL exports preserve the same provenance.
 - A conservative orthography suggestion API and web tool for a small initial set of spellings such as `mucii → mũciĩ`. Suggestions are not silently applied or saved and must be confirmed by fluent speakers.
 - A curated Gĩkũyũ source catalogue registers dataset metadata as pending; it does not download gated datasets or bypass access controls.
 
-The hunter accepts explicit CC0, attribution-only CC BY 3.0/4.0, dedicated public-domain declarations and an explicit Kenya Open Data licence declaration. ShareAlike, NonCommercial, unknown and ambiguous licence evidence is not accepted for automatic ingestion. A site being governmental, old or publicly accessible is not by itself proof of reuse rights.
+The licence detector recognises supported explicit declarations such as CC0, CC BY 3.0/4.0, dedicated public-domain declarations and explicit Kenya Open Data terms. Other, missing or ambiguous declarations remain recorded as unknown for reuse. The crawler's archive collection is not blocked merely because a machine-readable licence is absent.
 
 ## Additional implementation in the current repository
 
@@ -46,7 +46,7 @@ The crawler has not been run against a production database. No community submiss
 
 ## Rights and data governance
 
-Public-source discovery does not grant redistribution or AI-training rights. Every archived record must retain its source, licence evidence, attribution, discovery time, dialect metadata and review state. CC0/CC BY candidates carry the reuse flags implied by those licences but remain pending review; Kenya open-data candidates default to research-only until their terms are reviewed. Contributor recordings must have explicit permission and consent before ingestion. Takedown requests require an auditable, tested workflow before any removal-time guarantee is advertised.
+Each record retains source provenance, detected licence evidence, discovery time, dialect metadata and rights state. Unknown rights are never silently treated as permission for AI training, commercial use or researcher redistribution. Audio contributions require explicit rights and speaker-consent declarations. The backend takedown action hides the source, removes stored text/media records and attempts to purge search-index/object-store entries while retaining the request for audit. The live site is not yet connected to the production backend, so no timed removal guarantee is currently claimed.
 
 ## Security and dependencies
 
