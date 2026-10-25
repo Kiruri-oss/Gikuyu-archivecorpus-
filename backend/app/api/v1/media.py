@@ -63,8 +63,8 @@ async def upload_media(
  ) -> MediaSubmissionDetail:
     import json
     parsed = MediaCreate.model_validate(json.loads(meta))
-    if not parsed.consent_to_archive or not parsed.confirm_rights:
-        raise HTTPException(status_code=422, detail="Confirm your right to contribute this recording and consent to its storage for review.")
+    if not parsed.consent_to_archive or not parsed.confirm_rights or not parsed.speaker_consent_confirmed:
+        raise HTTPException(status_code=422, detail="Confirm archive consent, your right to contribute this recording, and permission from the speaker.")
 
     raw = await file.read()
     if len(raw) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
@@ -91,6 +91,7 @@ async def upload_media(
             "allow_commercial_use": parsed.allow_commercial_use,
             "consent_to_archive": parsed.consent_to_archive,
             "rights_confirmed": parsed.confirm_rights,
+            "speaker_consent_confirmed": parsed.speaker_consent_confirmed,
         }),
     )
     db.add(source)
