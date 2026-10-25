@@ -99,6 +99,8 @@ async def review_source(
                     "id": str(record.id), "title": record.title,
                     "speaker": record.speaker or "", "dialect": record.dialect or "",
                     "genre": record.genre or "", "license": record.license or "",
+                    "language_code": record.language_code,
+                    "source_url": source.url,
                     "allow_ai_training": record.allow_ai_training,
                     "allow_commercial_use": record.allow_commercial_use,
                 })
@@ -110,7 +112,7 @@ async def review_source(
                             "transcript": segment.transcript or "",
                             "translation": segment.translation or "",
                             "dialect": record.dialect or "",
-                            "language_code": record.dialect or "",
+                            "language_code": "ki",
                         })
             else:
                 await search_index.delete_document("media", str(record.id))
