@@ -1,4 +1,5 @@
 import asyncio
+import re
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -53,7 +54,9 @@ class YouTubeCrawler:
                 if not item or not item.get("id"):
                     continue
                 video_id = str(item["id"]).strip()
-                if not video_id or video_id in unique:
+                if not re.fullmatch(r"[A-Za-z0-9_-]{6,20}", video_id):
+                    continue
+                if video_id in unique:
                     continue
                 unique[video_id] = {
                     "url": f"https://www.youtube.com/watch?v={video_id}",
