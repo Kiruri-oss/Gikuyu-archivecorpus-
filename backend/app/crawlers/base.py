@@ -221,7 +221,10 @@ class BaseCrawler:
 
                     raw = book.read(entry)
                     extracted_bytes += len(raw)
-                    soup = BeautifulSoup(raw, "lxml")
+                    # EPUB XHTML is UTF-8 by default; pass decoded text so
+                    # BeautifulSoup does not guess a legacy encoding and corrupt ĩ/ũ.
+                    decoded = raw.decode("utf-8-sig", errors="replace")
+                    soup = BeautifulSoup(decoded, "lxml")
                     if not title and soup.title:
                         title = soup.title.get_text(" ", strip=True)
                     for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form"]):
