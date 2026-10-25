@@ -55,3 +55,31 @@ async def test_crawler_does_not_archive_cc_by_sa(monkeypatch):
     monkeypatch.setattr(crawler, "fetch", fake_fetch)
     results = await crawler.crawl(["https://example.org/"], max_pages=1)
     assert results == []
+
+
+@pytest.mark.asyncio
+async def test_crawler_applies_a_minimum_delay_between_requests_to_the_same_host(monkeypatch):
+    import time
+
+    from app.crawlers.base import BaseCrawler
+
+    monkeypatch.setattr("app.crawlers.base.settings.CRAWLER_MIN_HOST_DELAY_SECONDS", 0.02)
+    crawler = BaseCrawler()
+    await crawler._respect_host_delay("https://example.org/first")
+    started = time.monotonic()
+    await crawler._respect_host_delay("https://example.org/second")
+    assert time.monotonic() - started >= 0.015
+
+
+@pytest.mark.asyncio
+async def test_crawler_does_not_apply_host_delay_across_different_origins(monkeypatch):
+    import time
+
+    from app.crawlers.base import BaseCrawler
+
+    monkeypatch.setattr("app.crawlers.base.settings.CRAWLER_MIN_HOST_DELAY_SECONDS", 0.05)
+    crawler = BaseCrawler()
+    await crawler._respect_host_delay("https://one.example/first")
+    started = time.monotonic()
+    await crawler._respect_host_delay("https://two.example/second")
+    assert time.monotonic() - started < 0.04
