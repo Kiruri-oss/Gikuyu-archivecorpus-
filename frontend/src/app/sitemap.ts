@@ -4,6 +4,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://gikuyu-archivecorpus.vercel.app";
   return [
     { url: baseUrl, changeFrequency: "weekly", priority: 1 },
+    { url: `${baseUrl}/languages`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${baseUrl}/search`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${baseUrl}/saved`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${baseUrl}/about`, changeFrequency: "monthly", priority: 0.6 },
