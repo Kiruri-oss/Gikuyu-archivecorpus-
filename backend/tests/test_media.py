@@ -101,3 +101,29 @@ async def test_list_media_filters_by_dialect(client, db_session, auth_headers):
     data = resp.json()
     assert len(data) == 1
     assert data[0]["title"] == "A"
+
+@pytest.mark.asyncio
+async def test_get_media_returns_signed_url(client, db_session):
+    from app.models.media import Media, MediaKind
+    from app.models.source import Source, SourceType
+
+    source = Source(url="test://detail", domain="test", source_type=SourceType.USER_UPLOAD)
+    db_session.add(source)
+    await db_session.flush()
+    media = Media(
+        source_id=source.id,
+        kind=MediaKind.AUDIO,
+        title="Detail test",
+        file_key="detail/key",
+        sha256=uuid.uuid4().hex,
+    )
+    db_session.add(media)
+    await db_session.commit()
+    await db_session.refresh(media)
+
+    with patch("app.api.v1.media.storage_service.presigned_url", return_value="https://storage.example/audio") as mock_url:
+        response = await client.get(f"/api/v1/media/{media.id}")
+
+    assert response.status_code == 200
+    assert response.json()["file_url"] == "https://storage.example/audio"
+    mock_url.assert_called_once()

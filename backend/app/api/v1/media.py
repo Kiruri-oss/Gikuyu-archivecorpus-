@@ -17,6 +17,15 @@ router = APIRouter(prefix="/media", tags=["media"])
 settings = get_settings()
 logger = get_logger(__name__)
 
+def _build_media_detail(media: Media) -> MediaDetail:
+    data = MediaRead.model_validate(media).model_dump()
+    data.update({
+        "file_url": storage_service.presigned_url(settings.S3_BUCKET_AUDIO, media.file_key),
+        "sha256": media.sha256,
+        "size_bytes": media.size_bytes,
+    })
+    return MediaDetail.model_validate(data)
+
 
 @router.get("", response_model=list[MediaRead])
 async def list_media(
@@ -40,9 +49,7 @@ async def get_media(media_id: uuid.UUID, db: DbSession) -> MediaDetail:
     media = await db.get(Media, media_id)
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
-    detail = MediaDetail.model_validate(media)
-    detail.file_url = storage_service.presigned_url(settings.S3_BUCKET_AUDIO, media.file_key)
-    return detail
+    return _build_media_detail(media)
 
 
 @router.post("", response_model=MediaDetail, status_code=status.HTTP_201_CREATED)
