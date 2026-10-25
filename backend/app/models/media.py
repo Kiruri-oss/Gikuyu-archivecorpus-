@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import String, Enum, Text, Float, ForeignKey, BigInteger
+from sqlalchemy import String, Enum, Text, Float, ForeignKey, BigInteger, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,10 @@ class Media(Base, TimestampMixin):
     mime_type: Mapped[str | None] = mapped_column(String(100))
     lang_score: Mapped[float | None] = mapped_column(Float)
     license: Mapped[str | None] = mapped_column(String(100))
+    allow_public_display: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allow_research_use: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allow_ai_training: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allow_commercial_use: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
 
     source = relationship("Source", back_populates="media")
