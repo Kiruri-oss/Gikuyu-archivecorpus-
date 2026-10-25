@@ -4,6 +4,9 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+if settings.REDIS_URL is None:
+    raise RuntimeError("REDIS_URL is required to start the optional Celery worker.")
+
 celery_app = Celery(
     "gikuyu_archive",
     broker=str(settings.REDIS_URL),
