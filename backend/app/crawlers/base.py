@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.crawlers.licensing import detect_open_licence, is_safe_http_url
+from app.crawlers.licensing import canonicalize_url, detect_open_licence, is_safe_http_url
 from app.services.language_detector import language_detector
 
 logger = get_logger(__name__)
@@ -140,7 +140,7 @@ class BaseCrawler:
 
         lang, score = language_detector.detect(body)
         links = [
-            urljoin(base_url, anchor["href"])
+            canonicalize_url(urljoin(base_url, anchor["href"]))
             for anchor in soup.find_all("a", href=True)
             if is_safe_http_url(urljoin(base_url, anchor["href"]))
         ]
