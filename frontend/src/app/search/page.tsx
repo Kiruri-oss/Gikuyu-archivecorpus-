@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import type { Media } from "@/types";
 
 export default function SearchPage() {
@@ -65,9 +66,10 @@ export default function SearchPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-earth-700">{media.source_name ?? media.dialect ?? "Public reference"}</p>
             <h2 className="mt-2 break-words text-lg font-semibold leading-6 text-earth-900">{media.title}</h2>
             {media.summary && <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-600">{media.summary.replace(/\s+/g, " ")}</p>}
-            <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-5 text-sm">
+            <div className="mt-auto flex flex-wrap items-center gap-3 pt-5 text-sm">
               <Link href={`/media/${encodeURIComponent(media.id)}`} className="font-semibold text-earth-700 underline underline-offset-4">View details</Link>
-              {media.source_url && <a href={media.source_url} target="_blank" rel="noopener noreferrer" className="text-gray-600 underline underline-offset-4">Original page ↗</a>}
+              {media.source_url && <a href={media.source_url} target="_blank" rel="noopener noreferrer" className="text-gray-600 underline underline-offset-4">Original ↗</a>}
+              {media.source_url && <BookmarkButton id={media.id} title={media.title} sourceName={media.source_name ?? media.dialect ?? "Public reference"} sourceUrl={media.source_url} />}
             </div>
           </article>
         ))}
