@@ -1,3 +1,5 @@
+import pytest
+
 from app.crawlers.web import WebCrawler
 
 
@@ -7,7 +9,8 @@ GIKUYU_TEXT = (
 ) * 3
 
 
-def test_hunter_follows_relevant_cross_domain_links_and_keeps_unknown_rights(monkeypatch):
+@pytest.mark.asyncio
+async def test_hunter_follows_relevant_cross_domain_links_and_keeps_unknown_rights(monkeypatch):
     crawler = WebCrawler()
     pages = {
         "https://seed.example/start": (
@@ -27,8 +30,7 @@ def test_hunter_follows_relevant_cross_domain_links_and_keeps_unknown_rights(mon
     monkeypatch.setattr(crawler, "fetch", fake_fetch)
     monkeypatch.setattr("app.crawlers.base.language_detector.detect", lambda text: ("ki", 0.95))
 
-    import asyncio
-    results = asyncio.run(crawler.crawl(["https://seed.example/start"], max_pages=10))
+    results = await crawler.crawl(["https://seed.example/start"], max_pages=10)
 
     assert {item["url"] for item in results} == set(pages)
     assert all(item["language"] == "ki" for item in results)
@@ -39,7 +41,8 @@ def test_hunter_follows_relevant_cross_domain_links_and_keeps_unknown_rights(mon
     assert all(item["rights_state"] == "unknown_pending_rights_request" for item in results)
 
 
-def test_hunter_does_not_follow_unrelated_external_links(monkeypatch):
+@pytest.mark.asyncio
+async def test_hunter_does_not_follow_unrelated_external_links(monkeypatch):
     crawler = WebCrawler()
     html = (
         f"<html><head><title>Gĩkũyũ</title></head><body><p>{GIKUYU_TEXT}</p>"
@@ -52,8 +55,7 @@ def test_hunter_does_not_follow_unrelated_external_links(monkeypatch):
     monkeypatch.setattr(crawler, "fetch", fake_fetch)
     monkeypatch.setattr("app.crawlers.base.language_detector.detect", lambda text: ("ki", 0.95))
 
-    import asyncio
-    results = asyncio.run(crawler.crawl(["https://seed.example/start"], max_pages=10))
+    results = await crawler.crawl(["https://seed.example/start"], max_pages=10)
 
     assert len(results) == 1
     assert results[0]["url"] == "https://seed.example/start"
