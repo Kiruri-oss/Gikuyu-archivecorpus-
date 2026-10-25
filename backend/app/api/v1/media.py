@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core.deps import DbSession, CurrentUser, ReviewerUser
 from app.models.media import Media, MediaKind
@@ -18,8 +19,16 @@ router = APIRouter(prefix="/media", tags=["media"])
 settings = get_settings()
 logger = get_logger(__name__)
 
-def _build_media_detail(media: Media) -> MediaDetail:
+def _build_media_read(media: Media) -> MediaRead:
     data = MediaRead.model_validate(media).model_dump()
+    source = media.__dict__.get("source")
+    source_url = source.url if source else None
+    data["source_url"] = source_url if source_url and source_url.startswith(("http://", "https://")) else None
+    return MediaRead.model_validate(data)
+
+
+def _build_media_detail(media: Media) -> MediaDetail:
+    data = _build_media_read(media).model_dump()
     data.update({
         "file_url": storage_service.presigned_url(settings.S3_BUCKET_AUDIO, media.file_key),
         "sha256": media.sha256,
@@ -36,18 +45,18 @@ async def list_media(
     limit: int = 50,
     offset: int = 0,
 ) -> list[MediaRead]:
-    stmt = select(Media).join(Source, Media.source_id == Source.id).where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True)).order_by(Media.created_at.desc()).limit(max(1, min(limit, 100))).offset(max(0, offset))
+    stmt = select(Media).options(selectinload(Media.source)).join(Source, Media.source_id == Source.id).where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True)).order_by(Media.created_at.desc()).limit(max(1, min(limit, 100))).offset(max(0, offset))
     if dialect:
         stmt = stmt.where(Media.dialect == dialect)
     if genre:
         stmt = stmt.where(Media.genre == genre)
     result = await db.execute(stmt)
-    return [MediaRead.model_validate(m) for m in result.scalars().all()]
+    return [_build_media_read(m) for m in result.scalars().all()]
 
 
 @router.get("/{media_id}", response_model=MediaDetail)
 async def get_media(media_id: uuid.UUID, db: DbSession) -> MediaDetail:
-    stmt = select(Media).join(Source, Media.source_id == Source.id).where(Media.id == media_id, Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True))
+    stmt = select(Media).options(selectinload(Media.source)).join(Source, Media.source_id == Source.id).where(Media.id == media_id, Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True))
     result = await db.execute(stmt)
     media = result.scalar_one_or_none()
     if not media:
