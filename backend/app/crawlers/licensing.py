@@ -1,13 +1,14 @@
 """Conservative licence detection for the automatic corpus hunter.
 
-Only explicit, machine-readable or clearly stated licences are accepted. A host
-being a government, archive, or educational institution is not itself a licence.
-Unknown and ambiguous pages are discovery-only and must not be archived.
+Only explicit, machine-readable licence declarations or dedicated rights/licence
+sections are accepted. A host being a government, archive, or school is not a licence.
+Unknown or ambiguous pages are discovery-only and are not ingested.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
+from ipaddress import ip_address
 
 from bs4 import BeautifulSoup
 
@@ -22,31 +23,21 @@ class OpenLicence:
 
 
 _ALLOWED_MARKERS: tuple[tuple[tuple[str, ...], OpenLicence], ...] = (
-    (
-        ("creativecommons.org/publicdomain/zero/1.0", "cc0 1.0", "cc0-1.0"),
-        OpenLicence("CC0-1.0", "https://creativecommons.org/publicdomain/zero/1.0/", True, True, True),
-    ),
-    (
-        ("creativecommons.org/licenses/by/4.0", "cc by 4.0", "cc-by-4.0"),
-        OpenLicence("CC-BY-4.0", "https://creativecommons.org/licenses/by/4.0/", True, True, True),
-    ),
-    (
-        ("creativecommons.org/licenses/by/3.0", "cc by 3.0", "cc-by-3.0"),
-        OpenLicence("CC-BY-3.0", "https://creativecommons.org/licenses/by/3.0/", True, True, True),
-    ),
-    (
-        ("public domain", "public-domain", "pd mark"),
-        OpenLicence("Public Domain (explicitly stated)", "", True, True, True),
-    ),
-    (
-        ("kenya open data license", "kenya open data licence", "government of kenya open data license"),
-        OpenLicence("Kenya Open Data License (explicitly stated)", "", True, True, True),
-    ),
+    (("creativecommons.org/publicdomain/zero/1.0", "cc0 1.0", "cc0-1.0"),
+     OpenLicence("CC0-1.0", "https://creativecommons.org/publicdomain/zero/1.0/", True, True, True)),
+    (("creativecommons.org/licenses/by/4.0", "cc by 4.0", "cc-by-4.0"),
+     OpenLicence("CC-BY-4.0", "https://creativecommons.org/licenses/by/4.0/", True, True, True)),
+    (("creativecommons.org/licenses/by/3.0", "cc by 3.0", "cc-by-3.0"),
+     OpenLicence("CC-BY-3.0", "https://creativecommons.org/licenses/by/3.0/", True, True, True)),
+    (("public domain", "public-domain", "pd mark"),
+     OpenLicence("Public Domain (explicitly stated)", "", True, True, True)),
+    (("kenya open data license", "kenya open data licence", "government of kenya open data license"),
+     OpenLicence("Kenya Open Data License (explicitly stated)", "", True, True, True)),
 )
 
 
 def detect_open_licence(html: str, page_url: str) -> OpenLicence | None:
-    """Return an approved licence only when the page explicitly identifies it."""
+    """Accept only an explicit licence link/meta field or dedicated rights section."""
     soup = BeautifulSoup(html, "lxml")
     candidates: list[tuple[str, str]] = []
 
@@ -58,15 +49,17 @@ def detect_open_licence(html: str, page_url: str) -> OpenLicence | None:
         content = tag.get("content", "")
         text = tag.get_text(" ", strip=True) if hasattr(tag, "get_text") else ""
         value = " ".join(str(part) for part in [href, content, text] if part)
-        if "license" in rel or "licence" in rel or tag.get("name", "").lower() in {
-            "license", "licence", "dc.rights", "dcterms.license", "rights"
-        } or tag.get("property", "").lower() in {"og:license", "dc.rights"}:
+        is_rights_field = (
+            "license" in rel or "licence" in rel
+            or tag.get("name", "").lower() in {"license", "licence", "dc.rights", "dcterms.license", "rights"}
+            or tag.get("property", "").lower() in {"og:license", "dc.rights"}
+        )
+        if is_rights_field:
             candidates.append((value.lower(), urljoin(page_url, href) if href else ""))
 
-    # Explicit page text is useful when a publisher states its rights without
-    # machine-readable metadata. Generic "open access" claims are not accepted.
-    visible_text = soup.get_text(" ", strip=True).lower()
-    candidates.append((visible_text, ""))
+    for selector in (".license", ".licence", "#license", "#licence", "[itemprop='license']", "[itemprop='copyrightNotice']"):
+        for node in soup.select(selector):
+            candidates.append((node.get_text(" ", strip=True).lower(), ""))
 
     for candidate, candidate_url in candidates:
         for markers, licence in _ALLOWED_MARKERS:
@@ -82,16 +75,20 @@ def detect_open_licence(html: str, page_url: str) -> OpenLicence | None:
 
 
 def is_safe_http_url(url: str) -> bool:
-    """Reject non-web schemes and obvious local/private targets before fetching."""
+    """Reject non-web schemes, credentialed URLs, and obvious local/private targets."""
     try:
         parsed = urlparse(url)
         host = (parsed.hostname or "").lower().rstrip(".")
         if parsed.scheme not in {"http", "https"} or not host or parsed.username or parsed.password:
             return False
-        if host in {"localhost", "localhost.localdomain"} or host.endswith((".localhost", ".local", ".internal")):
+        if host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
             return False
-        if host in {"127.0.0.1", "::1", "0.0.0.0", "169.254.169.254"}:
-            return False
+        try:
+            address = ip_address(host)
+            if not address.is_global:
+                return False
+        except ValueError:
+            pass
         return True
     except (TypeError, ValueError):
         return False
