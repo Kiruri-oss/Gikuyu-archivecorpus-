@@ -80,10 +80,13 @@ class WebCrawler(BaseCrawler):
             licence = self.detect_open_license(html, final_url)
             page = self.extract(html, final_url, licence or "UNKNOWN — licence not stated")
             if page and page.language == "ki" and page.confidence >= settings.LANGUAGE_DETECTION_THRESHOLD:
+                # Discover every relevant Gĩkũyũ page, but only persist the
+                # page body when an explicit reusable licence was identified.
+                # Otherwise retain a source reference and descriptive metadata only.
                 results.append({
                     "url": page.url,
                     "title": page.title,
-                    "text": page.text,
+                    "text": page.text if licence else None,
                     "language": page.language,
                     "confidence": page.confidence,
                     "license": page.license,
@@ -91,8 +94,9 @@ class WebCrawler(BaseCrawler):
                     "permits_research": page.permits_research,
                     "permits_ai_training": page.permits_ai_training,
                     "permits_commercial_use": page.permits_commercial_use,
-                    "rights_state": "identified_open_licence" if licence else "unknown_pending_rights_request",
-                    "status": "approved",
+                    "rights_state": "identified_open_licence" if licence else "unknown_pending_rights_review",
+                    "collection_mode": "full_text" if licence else "metadata_and_source_link_only",
+                    "status": "approved" if licence else "pending",
                 })
                 logger.info("crawler.candidate_found", url=page.url, license=page.license)
 
