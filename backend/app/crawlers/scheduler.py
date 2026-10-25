@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
+from redis.asyncio import Redis
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -19,6 +20,9 @@ from app.services.indexing import search_index
 logger = get_logger(__name__)
 settings = get_settings()
 SEED_URLS = [item.strip() for item in settings.CRAWLER_SEED_URLS.split(",") if item.strip()]
+FRONTIER_KEY = "gikuyu:hunter:frontier:v1"
+VISITED_KEY = "gikuyu:hunter:visited:v1"
+VISITED_TTL_SECONDS = 30 * 24 * 60 * 60
 
 
 class CrawlScheduler:
@@ -26,8 +30,55 @@ class CrawlScheduler:
         self.scheduler = AsyncIOScheduler()
         self.web = WebCrawler()
         self.youtube = YouTubeCrawler()
+        self.redis = Redis.from_url(settings.REDIS_URL, decode_responses=True)
+        self._memory_frontier: list[str] = []
+        self._memory_visited: set[str] = set()
         self.last_run: dict[str, object] = {"status": "never_run"}
         self._run_lock = asyncio.Lock()
+
+    async def _load_crawl_state(self) -> tuple[set[str], list[str], bool]:
+        """Load a durable crawl frontier; retain a process-local fallback if Redis is unavailable."""
+        try:
+            frontier = await self.redis.lrange(FRONTIER_KEY, 0, -1)
+            visited = await self.redis.smembers(VISITED_KEY)
+            return set(visited), list(frontier), True
+        except Exception as exc:
+            logger.warning("scheduler.frontier_load_failed", error=str(exc))
+            return set(self._memory_visited), list(self._memory_frontier), False
+
+    async def _save_crawl_state(
+        self,
+        previously_visited: set[str],
+        visited_now: set[str],
+        frontier: list[str],
+        redis_available: bool,
+    ) -> None:
+        """Save unfinished URLs and visited state so later runs continue rather than restart."""
+        if not frontier:
+            self._memory_frontier = []
+            self._memory_visited = set()
+        else:
+            self._memory_frontier = list(frontier)
+            self._memory_visited = set(previously_visited) | set(visited_now)
+
+        if not redis_available:
+            return
+
+        try:
+            pipeline = self.redis.pipeline()
+            pipeline.delete(FRONTIER_KEY)
+            if frontier:
+                pipeline.rpush(FRONTIER_KEY, *frontier)
+                if visited_now:
+                    pipeline.sadd(VISITED_KEY, *visited_now)
+                pipeline.expire(VISITED_KEY, VISITED_TTL_SECONDS)
+            else:
+                # A full frontier cycle has completed. Clear visited state so the
+                # next run starts a fresh pass and can discover newly changed pages.
+                pipeline.delete(VISITED_KEY)
+            await pipeline.execute()
+        except Exception as exc:
+            logger.warning("scheduler.frontier_save_failed", error=str(exc))
 
     async def _archive_candidates(self, candidates: list[dict]) -> int:
         saved = 0
@@ -168,7 +219,19 @@ class CrawlScheduler:
             page_budget = max(1, min(max_pages, 1000))
             self.last_run = {"status": "running", "started_at": started_at, "page_budget": page_budget}
             try:
-                results = await self.web.crawl(SEED_URLS, max_pages=page_budget)
+                visited_before, frontier_before, redis_available = await self._load_crawl_state()
+                start_urls = list(dict.fromkeys([*frontier_before, *SEED_URLS]))
+                results = await self.web.crawl(
+                    start_urls,
+                    max_pages=page_budget,
+                    already_visited=visited_before,
+                )
+                await self._save_crawl_state(
+                    visited_before,
+                    self.web.last_visited_urls,
+                    self.web.last_frontier_urls,
+                    redis_available,
+                )
                 saved = await self._archive_candidates(results)
                 youtube_sources_saved = 0
                 try:
@@ -184,6 +247,8 @@ class CrawlScheduler:
                     "pages_discovered": len(results),
                     "records_saved": saved,
                     "video_sources_saved": youtube_sources_saved,
+                    "visited_this_run": len(self.web.last_visited_urls),
+                    "frontier_remaining": len(self.web.last_frontier_urls),
                     "page_budget": page_budget,
                 }
                 logger.info("scheduler.web_crawl_complete", **self.last_run, collection_model="notice_and_takedown")
