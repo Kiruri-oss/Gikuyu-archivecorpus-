@@ -11,6 +11,7 @@ Last reviewed: 25 October 2026
 - Search input is validated server-side and source hosts are allow-listed when resolving a result ID.
 - Health endpoint: `/api/health`.
 - Uploads and dataset exports return explicit service-unavailable responses rather than pretending to save or export data.
+- A committed `frontend/package-lock.json` now pins the frontend dependency tree; Vercel's install command has been changed to `npm ci` for reproducible installs.
 
 ## What is not yet production-enabled
 
@@ -31,6 +32,15 @@ The Python FastAPI service in `backend/` is not connected to this Vercel deploym
 - Do not add real credentials to the repository. Configure secrets only in the relevant hosting provider.
 - Do not claim the project is a complete archive until persistence, authentication, deletion/takedown handling, and upload tests have been verified.
 
+## Security and dependency status
+
+- Next.js is pinned to the patched 15.5.28 release and React to 19.0.9.
+- The CI audit currently reports three moderate advisories in the Tailwind/PostCSS selector-parsing dependency chain. The project pins the patched `postcss-selector-parser` 6.x backport at 6.1.5; the audit database still reports the advisory against that major-version range. No high or critical findings were reported by the CI audit for the committed lockfile.
+- A larger Tailwind 4 migration has not been undertaken solely to silence advisory metadata because it would be a breaking CSS/configuration change; the pinned backport is used instead.
+
 ## Verification status
 
-The new public-source API was added in commit `a86d68575a87053d9d7c8c22d2df7945c8236391`. At the time of this note, Vercel's production build was still running and GitHub Actions frontend and backend checks were in progress. A green result must be confirmed from those systems before the change is considered verified.
+- GitHub Actions run `40228931646` passed backend tests, frontend typecheck, lint, production build, and API smoke tests. That run generated and tested the exact lockfile subsequently committed as `e93937daf1395ca09e2d3b8e0f0f917fdf614b53`.
+- The Vercel production deployment for that lockfile commit reached `READY`.
+- Vercel's install command has since been changed to `npm ci`. A follow-up deployment is being triggered by this documentation update so the install-command change can be verified from the build logs.
+- The external production API was not independently requested from this environment because outbound network access is unavailable here. The API routes were smoke-tested against a local production-mode Next.js server in CI.
