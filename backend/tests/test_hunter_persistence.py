@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.crawlers import scheduler as scheduler_module
 from app.crawlers.scheduler import CrawlScheduler
-from app.models.source import Source, SourceStatus
+from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
 
 
@@ -87,7 +87,7 @@ async def test_hunter_does_not_reimport_taken_down_source(db_session, monkeypatc
     source = Source(
         url="https://removed.example/gikuyu",
         domain="removed.example",
-        source_type="web",
+        source_type=SourceType.WEB,
         status=SourceStatus.TAKEN_DOWN,
         license="CC-BY",
         raw_metadata="{}",
