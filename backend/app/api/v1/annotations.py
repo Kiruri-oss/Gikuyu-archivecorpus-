@@ -5,6 +5,8 @@ from sqlalchemy import select
 from app.core.deps import DbSession, CurrentUser
 from app.models.annotation import Annotation
 from app.models.segment import Segment
+from app.models.media import Media
+from app.models.source import Source, SourceStatus
 from app.schemas.annotation import AnnotationCreate, AnnotationRead
 
 router = APIRouter(prefix="/annotations", tags=["annotations"])
@@ -12,6 +14,14 @@ router = APIRouter(prefix="/annotations", tags=["annotations"])
 
 @router.get("/segment/{segment_id}", response_model=list[AnnotationRead])
 async def list_annotations(segment_id: uuid.UUID, db: DbSession) -> list[AnnotationRead]:
+    visible = await db.execute(
+        select(Segment.id)
+        .join(Media, Segment.media_id == Media.id)
+        .join(Source, Media.source_id == Source.id)
+        .where(Segment.id == segment_id, Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True))
+    )
+    if visible.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Segment not found")
     result = await db.execute(
         select(Annotation).where(Annotation.segment_id == segment_id)
     )
