@@ -1,4 +1,6 @@
+import re
 from functools import lru_cache
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
@@ -8,16 +10,28 @@ settings = get_settings()
 
 class LanguageDetector:
     """
-    Lightweight heuristic + optional transformer-based Kikuyu detector.
-    Falls back to trigram frequency when the transformer is unavailable.
+    Conservative Gĩkũyũ detector for corpus ingestion.
+
+    It prefers distinctive Gĩkũyũ orthography and vocabulary over generic
+    letter sequences shared with Kiswahili or English. Unknown text is not
+    promoted to Gĩkũyũ merely because a common syllable appears frequently.
     """
 
-    KIKUYU_MARKERS = (
-        "na", "kĩ", "ũ", "mũ", "gĩ", "ny", "th", "ng'", "nj", "mb", "nd",
-        "kũ", "rĩ", "ũrĩ", "nĩ", "ũndũ", "andũ", "mũndũ", "gũkũ",
-    )
-    SWAHILI_MARKERS = ("na", "ya", "wa", "kwa", "hii", "hiyo", "sana", "kabisa")
-    ENGLISH_MARKERS = ("the", "and", "with", "this", "that", "from", "have")
+    KIKUYU_MARKERS = frozenset({
+        "nĩ", "rĩ", "kĩ", "mũ", "gĩ", "ũndũ", "andũ", "mũndũ", "gũkũ",
+        "kũ", "ũrĩ", "nĩguo", "gĩkũyũ", "mũciĩ", "nyũmba", "wĩra",
+        "ũhoro", "gũtirĩ", "mũthenya", "rĩrĩa", "ũcio", "ĩno", "ĩyo",
+        "ndĩ", "nĩwe", "thutha", "gũcooka", "ũgĩ", "mũthenya",
+    })
+    SWAHILI_MARKERS = frozenset({
+        "kwa", "hii", "hiyo", "sana", "kabisa", "yake", "watu", "habari",
+        "ndiyo", "lakini", "mimi", "wewe", "sisi", "nyumba", "mtu",
+        "kwamba", "bila", "kama", "leo", "asubuhi", "nzuri", "karibu",
+    })
+    ENGLISH_MARKERS = frozenset({
+        "the", "and", "with", "this", "that", "from", "have", "people",
+        "language", "their", "there", "which", "would", "about", "because",
+    })
 
     @lru_cache(maxsize=1)
     def _load_model(self):
@@ -33,15 +47,24 @@ class LanguageDetector:
             return ("unknown", 0.0)
 
         sample = text.lower()[:2000]
+        tokens = re.findall(r"[a-zĩũ]+(?:['’][a-zĩũ]+)?", sample)
+        if not tokens:
+            return ("unknown", 0.0)
 
-        # Fast path: Kikuyu-specific digraph/trigraph signals
-        kik_hits = sum(sample.count(m) for m in self.KIKUYU_MARKERS)
-        sw_hits = sum(sample.count(m) for m in self.SWAHILI_MARKERS)
-        en_hits = sum(sample.count(m) for m in self.ENGLISH_MARKERS)
-        total = kik_hits + sw_hits + en_hits + 1
-
+        unique_tokens = set(tokens)
+        kik_signals = {
+            token for token in unique_tokens
+            if token in self.KIKUYU_MARKERS or "ĩ" in token or "ũ" in token
+        }
+        sw_signals = unique_tokens & self.SWAHILI_MARKERS
+        en_signals = unique_tokens & self.ENGLISH_MARKERS
+        kik_hits = len(kik_signals)
+        total = kik_hits + len(sw_signals) + len(en_signals) + 1
         kik_ratio = kik_hits / total
-        if kik_ratio >= settings.LANGUAGE_DETECTION_THRESHOLD:
+
+        # Require more than one independent signal to avoid labelling short,
+        # ambiguous words as Gĩkũyũ. A caller can send uncertain text for review.
+        if kik_hits >= 2 and kik_ratio >= settings.LANGUAGE_DETECTION_THRESHOLD:
             return ("ki", round(kik_ratio, 4))
 
         model = self._load_model()
@@ -50,7 +73,7 @@ class LanguageDetector:
 
         try:
             result = model(sample)[0]
-            label = result["label"].lower()
+            label = str(result["label"]).lower()
             score = float(result["score"])
             mapping = {"sw": "sw", "en": "en", "so": "so", "fr": "fr"}
             return (mapping.get(label, label), score)
