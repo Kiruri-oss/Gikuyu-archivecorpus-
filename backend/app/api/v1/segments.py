@@ -71,13 +71,19 @@ async def update_segment(segment_id: uuid.UUID, payload: SegmentUpdate, db: DbSe
     segment = await db.get(Segment, segment_id)
     if not segment:
         raise HTTPException(status_code=404, detail="Segment not found")
+    media = await db.get(Media, segment.media_id)
+    source = await db.get(Source, media.source_id) if media else None
+    if not media or not source:
+        raise HTTPException(status_code=404, detail="Segment not found")
+    is_owner = media.file_key.startswith(f"{user.id}/")
+    is_reviewer = user.role.value in {"reviewer", "admin"}
+    if not (is_owner or is_reviewer):
+        raise HTTPException(status_code=403, detail="Only the recording contributor or a reviewer may correct this transcript.")
     if payload.transcript is not None:
         segment.transcript = payload.transcript
     if payload.translation is not None:
         segment.translation = payload.translation
     await db.flush()
-    media = await db.get(Media, segment.media_id)
-    source = await db.get(Source, media.source_id) if media else None
     if media and source and source.status == SourceStatus.APPROVED and media.allow_public_display:
         try:
             await search_index.index_document("segments", {
