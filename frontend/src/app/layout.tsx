@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Navbar } from "@/components/Navbar";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
   },
   description: "A growing Gĩkũyũ language corpus for words, proverbs, stories, oral histories, transcription, annotation and rights-aware language research.",
   applicationName: "Gĩkũyũ Archive",
+  manifest: "/manifest.json",
   openGraph: {
     type: "website",
     siteName: "Gĩkũyũ Archive",
@@ -35,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={inter.className}>
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-earth-900">Skip to content</a>
+        <ServiceWorkerRegister />
         <Navbar />
         <main id="main-content" className="mx-auto min-h-[70vh] max-w-6xl px-4 py-2 sm:px-6">{children}</main>
         <footer className="mt-12 border-t border-gray-200 bg-gray-50">
