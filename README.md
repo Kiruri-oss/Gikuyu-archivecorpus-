@@ -3,53 +3,64 @@
 **Live application:** https://gikuyu-archivecorpus.vercel.app  
 **Source code:** https://github.com/Kiruri-oss/Gikuyu-archivecorpus-
 
-## The product
+## Mission
 
-Gĩkũyũ Archive Corpus is intended to become a substantial, searchable digital library for Gĩkũyũ: vocabulary, proverbs, riddles, folklore, literature, oral histories, consent-based audio, time-aligned transcripts, translations, dialect information, orthography review and responsibly licensed AI-training datasets.
+Build a large, searchable digital library for **Gĩkũyũ (Kikuyu, ISO 639-3: `kik`) alone**. The product is a corpus—not a multilingual directory or a search wrapper. It should collect and preserve Gĩkũyũ words, proverbs, riddles, folklore, literature, oral histories, recordings, transcripts, translations, dialect information and annotated language data for research and language technology.
 
-This product is exclusively for Gĩkũyũ (Kikuyu, ISO 639-3: kik). It is not a multilingual archive, and adding other language corpora is outside this project's objective. English-language pages may be used only as supporting discovery references where useful; they are never a substitute for Gĩkũyũ material.
+The original product is a notice-and-takedown archive: the Hunter searches widely across publicly reachable sources, respects `robots.txt`, records where material came from, and captures detected Gĩkũyũ content. A rights complaint must be traceable and actionable. No login walls, access controls, private networks or robots exclusions are bypassed.
 
-## What the current deployment actually does
+## Core modules
 
-- Searches selected Wikimedia reference sources and links to their original pages.
-- Displays reference details and allows a visitor to save links in that browser.
-- Provides initial project, contribution-status, privacy and takedown information.
-- Does **not** currently store a persistent Gĩkũyũ corpus or accept real audio/text submissions.
+1. **Hunter:** crawl configured public-web seed sources, follow relevant cross-site links, detect Gĩkũyũ, deduplicate text, and record source URL, title, discovery time, detected licence and rights metadata. Machine-readable licence metadata is recorded when present; absence is marked as unknown rather than treated as a licence.
+2. **Archive:** durable searchable source and text records, media metadata, hashes, transcripts, dialect labels, orthography and provenance.
+3. **Contribute:** text and audio contributions for proverbs, stories, conversations, translations and original writing. Audio submissions must include the contributor's recording-rights and speaker-consent declarations.
+4. **Transcription and annotation:** time-aligned transcript segments, translation, corrections, dialect tags, review state and Gĩkũyũ orthography including ĩ and ũ.
+5. **Researcher portal:** searchable, provenance-preserving JSONL/CSV exports with filters for dialect and permitted research, AI-training or commercial use.
+6. **Community features:** contributor recognition, proverb/riddle features sourced from archive records, correction requests and a takedown queue.
 
-## Intended core modules
+## Data and rights handling
 
-1. **Hunter:** crawl relevant public sources, respect robots.txt, record source URL/date/type, inspect explicit rights statements, and archive only material that meets the project's configured rights policy. Unclear rights must be queued for review, not silently treated as open.
-2. **Archive:** persistent records for source metadata, files, language text, audio, transcripts, dialects, orthography, consent and provenance.
-3. **Community contribution:** proverbs, stories, conversations, original writing and eligible literature, with clear consent, ownership/permission declarations and review workflows.
-4. **Transcription and annotation:** time-aligned segments, translation, correction, reviewer status, dialect labels and Gĩkũyũ orthography support including ĩ and ũ.
-5. **Researcher portal:** curated, licence-filtered exports, with source-level provenance and separate eligibility checks for text/audio and AI-training use.
-6. **Community participation:** contributor recognition, a proverb/riddle feature only when content is community-submitted or rights-cleared, and correction/takedown processes.
+- Gĩkũyũ is the only corpus language. A source containing another language is not itself a Gĩkũyũ corpus record.
+- The Hunter is designed for broad collection from publicly reachable pages and follows the site's robots policy. It does not bypass authentication or access controls.
+- Every record keeps its source URL, discovery time and detected rights metadata. If a licence is not detected, it is recorded as unknown; that unknown status **does not grant AI-training, commercial reuse or researcher redistribution permission**.
+- Copyright, privacy and cultural-sensitivity requests must be logged and handled through the takedown workflow. The original source host remains responsible for its own copy.
+- Audio contributions require explicit declarations that the contributor has rights to submit the recording and has obtained relevant speaker consent.
+- Takedown intake and backend deletion code exist in the repository, but a working production-connected intake and service-level guarantee depend on deploying and testing the backend with persistent services.
 
-## Rights and community safeguards
+## What is live versus in the repository
 
-The intended default is to collect only material with a verified basis for storage and reuse, such as public-domain material, CC0, CC BY where its terms are followed, and government open data whose terms permit reuse. Website availability alone does not establish permission. Media excerpts and other protected works require an appropriate permission basis. Audio contributors must confirm their authority to submit the recording and obtain the relevant speakers' consent; sensitive or culturally restricted knowledge requires additional care.
+The current Vercel frontend provides Gĩkũyũ-focused public-reference discovery, source details, a device-local saved list and project information. The FastAPI backend contains corpus, transcription, annotation, export, source-review, orthography and takedown modules, but is **not yet connected to the live Vercel application with production database, object storage and search credentials**. Therefore, do not treat the current website as accepting persistent contributions or running its Hunter in production.
 
-The project should provide a reachable rights-contact and takedown workflow, maintain an audit trail, and act promptly on valid complaints. Any specific legal deadlines and policy wording must be reviewed against applicable Kenyan law before being promised publicly.
+## Architecture
 
-## Architecture and current limitations
+- `frontend/`: Next.js App Router, TypeScript and Tailwind.
+- `backend/`: FastAPI, SQLAlchemy, PostgreSQL, object storage and Meilisearch integration.
+- `backend/app/crawlers/`: public-web crawling, robots handling, source discovery and licence metadata detection.
+- `backend/app/services/export.py`: provenance-preserving JSONL and CSV serializers.
+- `backend/app/api/v1/`: authentication, media, segments, annotations, text records, sources, exports, orthography and takedowns.
 
-The web application is in `frontend/` (Next.js). The API/backend code is in `backend/`; it is not yet connected to a production persistent database, object store, queue, search index or account system in the current Vercel deployment. Uploads, transcription workflows and corpus exports are therefore not live and must not be represented as operational.
-
-Before enabling community submissions, configure durable storage and database migrations, authentication and roles, upload limits and malware checks, consent/rights records, moderation and takedown handling, backups, monitoring and tests. Keep credentials in deployment secrets, never in source control.
-
-## Development
+## Development and verification
 
 Frontend:
 
 ```bash
 cd frontend
 npm ci
+npm run typecheck
 npm run lint
 npm run build
 ```
 
-Backend setup and checks are documented in `backend/pyproject.toml` and the backend README. Use a disposable test database and test storage when running integration tests.
+Backend:
+
+```bash
+cd backend
+pip install -e ".[dev]"
+pytest -q
+```
+
+Use a disposable test database and test object storage for integration testing. Production secrets belong in deployment secret settings, never in source control.
 
 ## Guiding principle
 
-The objective is not a thin wrapper around external websites. Public-source discovery is only an initial ingestion path. The real product is a durable Gĩkũyũ corpus built from traceable sources, community knowledge shared with consent, high-quality transcription and annotation, and carefully curated datasets.
+Gĩkũyũ deserves a permanent digital home and a serious corpus. Search wrappers are only a temporary discovery aid; the real product is a growing archive of source-traceable text and audio, high-quality transcription and annotation, and datasets whose reuse permissions are explicit.
