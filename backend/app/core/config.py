@@ -32,19 +32,25 @@ class Settings(BaseSettings):
     BACKEND_URL: AnyHttpUrl = "http://localhost:8000"
 
     CRAWLER_USER_AGENT: str = "GikuyuArchiveBot/1.0 (+https://gikuyu-archivecorpus.vercel.app/about)"
-    # Search/index pages are discovery entry points. The crawler follows only same-host
-    # links, checks robots.txt for each request, and stores content only when an explicit
-    # supported licence is found and the text is detected as Gĩkũyũ.
+    # Seed sources are discovery starting points, not the crawler's full boundary.
+    # Relevant public links may expand to other hosts under strict per-host budgets.
     CRAWLER_SEED_URLS: str = (
         "https://ki.wikipedia.org/wiki/Main_Page,"
         "https://ki.wiktionary.org/wiki/Main_Page,"
         "https://www.wikidata.org/w/index.php?search=Kikuyu&title=Special%3ASearch&ns0=1,"
+        "https://commons.wikimedia.org/wiki/Category:Kikuyu_language,"
         "https://opendata.go.ke/,"
         "https://archive.org/search?query=Kikuyu,"
         "https://openlibrary.org/search?q=Kikuyu,"
         "https://www.gutenberg.org/ebooks/search/?query=Kikuyu,"
         "https://www.loc.gov/search/?q=Kikuyu,"
-        "https://commons.wikimedia.org/wiki/Category:Kikuyu_language"
+        "https://www.google.com/books/?q=Kikuyu,"
+        "https://zenodo.org/search?q=Kikuyu,"
+        "https://huggingface.co/datasets?search=Kikuyu,"
+        "https://github.com/topics/kikuyu-language,"
+        "https://www.africanstorybook.org/,"
+        "https://www.maseno.ac.ke/,"
+        "https://www.ajol.info/"
     )
     CRAWLER_RESPECT_ROBOTS: bool = True
     CRAWLER_MAX_CONCURRENCY: int = 5
