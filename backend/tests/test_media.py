@@ -47,7 +47,7 @@ async def test_upload_media_rejects_duplicate(client, db_session, auth_headers):
     db_session.add(media)
     await db_session.commit()
 
-    payload = json.dumps({"title": "Dup title", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True})
+    payload = json.dumps({"title": "Dup title", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True, "language_confirmed": True})
     files = {"file": ("clip.webm", io.BytesIO(b"fake-audio-bytes"), "audio/webm")}
 
     with patch("app.api.v1.media.storage_service.compute_sha256", return_value="a" * 64):
@@ -68,7 +68,7 @@ async def test_upload_media_rejects_oversized(client, auth_headers):
     settings = get_settings()
     huge = b"x" * (settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024 + 1)
 
-    payload = json.dumps({"title": "Huge", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True})
+    payload = json.dumps({"title": "Huge", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True, "language_confirmed": True})
     files = {"file": ("clip.webm", io.BytesIO(huge), "audio/webm")}
 
     resp = await client.post(
