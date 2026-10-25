@@ -24,7 +24,7 @@ def test_does_not_replace_inside_larger_words_or_empty_input():
 
 @pytest.mark.asyncio
 async def test_orthography_api_returns_suggestions_not_saved_changes(client):
-    response = client.post("/api/v1/orthography/suggest", json={"text": "mucii"})
+    response = await client.post("/api/v1/orthography/suggest", json={"text": "mucii"})
     assert response.status_code == 200
     payload = response.json()
     assert payload["original_text"] == "mucii"
