@@ -67,7 +67,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/package-lock.json
+          git add package-lock.json
           if git diff --cached --quiet; then
             echo "Frontend lockfile is already current."
             exit 0
