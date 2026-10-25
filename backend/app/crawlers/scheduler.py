@@ -226,13 +226,14 @@ class CrawlScheduler:
                     max_pages=page_budget,
                     already_visited=visited_before,
                 )
+                saved = await self._archive_candidates(results)
+                # Advance the persistent frontier only after corpus records are committed.
                 await self._save_crawl_state(
                     visited_before,
                     self.web.last_visited_urls,
                     self.web.last_frontier_urls,
                     redis_available,
                 )
-                saved = await self._archive_candidates(results)
                 youtube_sources_saved = 0
                 try:
                     youtube_candidates = await self.youtube.discover(limit_per_query=25)
