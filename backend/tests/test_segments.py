@@ -54,4 +54,4 @@ async def test_create_segment_succeeds(client, db_session, auth_headers, contrib
         }, headers=auth_headers)
     assert resp.status_code == 201
     assert resp.json()["transcript"] == "Nĩ ũndũ mwega"
-    mock_index.assert_awaited_once()
+    mock_index.assert_not_awaited()
