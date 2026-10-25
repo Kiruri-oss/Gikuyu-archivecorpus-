@@ -25,6 +25,13 @@ jobs:
         run: |
           npm install --package-lock-only --ignore-scripts
           npm ci
+      - name: Upload reproducible frontend lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-package-lock
+          path: frontend/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
       - name: Report dependency audit findings
         run: |
           npm audit --json > /tmp/npm-audit.json || true
