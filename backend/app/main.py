@@ -12,6 +12,8 @@ from app.core.logging import configure_logging, get_logger
 from app.api.v1.router import api_router
 from app.services.indexing import search_index
 from app.crawlers.scheduler import crawl_scheduler
+from app.crawlers.catalog import seed_curated_sources
+from app.db.session import AsyncSessionLocal
 
 settings = get_settings()
 configure_logging(settings.DEBUG)
@@ -27,6 +29,13 @@ async def lifespan(app: FastAPI):
         await search_index.ensure_indexes()
     except Exception as exc:
         logger.warning("app.search_index_init_failed", error=str(exc))
+    try:
+        async with AsyncSessionLocal() as db:
+            added = await seed_curated_sources(db)
+            await db.commit()
+            logger.info("app.source_catalog_seeded", added=added)
+    except Exception as exc:
+        logger.warning("app.source_catalog_seed_failed", error=str(exc))
     if settings.APP_ENV == "production":
         crawl_scheduler.start()
     yield
