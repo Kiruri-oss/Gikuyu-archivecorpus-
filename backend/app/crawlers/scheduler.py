@@ -211,7 +211,7 @@ class CrawlScheduler:
         logger.info("scheduler.youtube_sources_saved", saved=saved, discovered=len(candidates))
         return saved
 
-    async def run_web_crawl(self, max_pages: int = 500) -> dict[str, object]:
+    async def run_web_crawl(self, max_pages: int = 1000) -> dict[str, object]:
         if self._run_lock.locked():
             raise RuntimeError("A hunter run is already in progress.")
         async with self._run_lock:
@@ -278,7 +278,7 @@ class CrawlScheduler:
                 coalesce=True,
             )
             self.scheduler.start()
-            logger.info("scheduler.started", seed_count=len(SEED_URLS), max_pages=500, interval_hours=6)
+            logger.info("scheduler.started", seed_count=len(SEED_URLS), max_pages=1000, interval_hours=6)
 
     def stop(self) -> None:
         if self.scheduler.running:

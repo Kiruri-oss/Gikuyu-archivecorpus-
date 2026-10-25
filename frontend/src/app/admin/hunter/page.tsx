@@ -60,7 +60,7 @@ export default function AdminHunterPage() {
     setMessage("");
     setRunning(true);
     try {
-      await api.post<{ status: string; page_budget: number }>("/api/v1/hunter/run?max_pages=500");
+      await api.post<{ status: string; page_budget: number }>("/api/v1/hunter/run?max_pages=1000");
       setMessage("Hunter run queued. This page will refresh status while the crawl runs.");
       await loadStatus();
     } catch (cause) {

@@ -16,7 +16,7 @@ async def hunter_status(_: AdminUser) -> dict[str, object]:
         **crawl_scheduler.last_run,
         "scheduled": crawl_scheduler.scheduler.running,
         "seed_count": len(SEED_URLS),
-        "default_page_budget": 500,
+        "default_page_budget": 1000,
         "max_pages_per_run": 1000,
         "max_discovery_hosts": MAX_DISCOVERY_HOSTS,
         "max_pages_per_host": MAX_PAGES_PER_HOST,
@@ -27,7 +27,7 @@ async def hunter_status(_: AdminUser) -> dict[str, object]:
 async def run_hunter(
     background_tasks: BackgroundTasks,
     _: AdminUser,
-    max_pages: int = Query(default=500, ge=1, le=1000),
+    max_pages: int = Query(default=1000, ge=1, le=1000),
 ) -> dict[str, object]:
     """Queue a bounded Gĩkũyũ crawl without holding the admin HTTP request open."""
     previous_status = crawl_scheduler.last_run.get("status")
