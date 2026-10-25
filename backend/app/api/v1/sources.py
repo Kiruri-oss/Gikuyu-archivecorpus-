@@ -83,6 +83,7 @@ async def review_source(
                     "id": str(record.id), "title": record.title, "body": record.body,
                     "language_code": record.language_code, "dialect": record.dialect or "",
                     "genre": record.genre or "", "license": record.license,
+                    "source_url": record.source.url if record.source else "",
                     "allow_ai_training": record.allow_ai_training,
                     "allow_commercial_use": record.allow_commercial_use,
                 })
