@@ -27,6 +27,8 @@ async def search(
     PostgreSQL is the source of truth, so a separate Meilisearch service is optional.
     """
     query = (q or "").strip()
+    if q is not None and not query:
+        raise HTTPException(status_code=400, detail="Search terms cannot be blank.")
     if query and len(query) < 2:
         raise HTTPException(status_code=400, detail="Enter at least two non-space characters.")
     pattern = _like_pattern(query) if query else None
