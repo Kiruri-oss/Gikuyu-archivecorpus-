@@ -29,6 +29,16 @@ class TextRecordCreate(BaseModel):
         return value
 
 
+    @field_validator("language_code")
+    @classmethod
+    def enforce_gikuyu_only(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"ki", "kik"}:
+            raise ValueError("This archive accepts Gĩkũyũ (Kikuyu) only.")
+        # Keep one canonical code throughout storage, indexing and exports.
+        return "ki"
+
+
 class TextRecordRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,12 +61,3 @@ class TextRecordRead(BaseModel):
 class TextRecordSubmissionRead(TextRecordRead):
     review_status: str = "pending"
     message: str = "Received for review. It is not public until a reviewer approves publication."
-
-    @field_validator("language_code")
-    @classmethod
-    def enforce_gikuyu_only(cls, value: str) -> str:
-        normalized = value.strip().lower()
-        if normalized not in {"ki", "kik"}:
-            raise ValueError("This archive accepts Gĩkũyũ (Kikuyu) only.")
-        # Keep one canonical code throughout storage, indexing and exports.
-        return "ki"
