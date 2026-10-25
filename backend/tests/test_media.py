@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 async def test_upload_media_creates_record(client, db_session, auth_headers):
     with patch("app.api.v1.media.storage_service.upload", return_value="test/key") as mock_upload, \
          patch("app.api.v1.media.search_index.index_document", new_callable=AsyncMock) as mock_index:
-        payload = json.dumps({"title": "Ngano ya Njũkĩ", "speaker": "Wanjiku", "dialect": "Ki-Muranga", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True, "consent_to_publish": True, "allow_research_use": True, "allow_ai_training": False, "allow_commercial_use": False})
+        payload = json.dumps({"title": "Ngano ya Njũkĩ", "speaker": "Wanjiku", "dialect": "Ki-Muranga", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True, "language_confirmed": True, "consent_to_publish": True, "allow_research_use": True, "allow_ai_training": False, "allow_commercial_use": False})
         files = {"file": ("clip.webm", io.BytesIO(b"fake-audio-bytes"), "audio/webm")}
         resp = await client.post(
             "/api/v1/media",
@@ -47,7 +47,7 @@ async def test_upload_media_rejects_duplicate(client, db_session, auth_headers):
     db_session.add(media)
     await db_session.commit()
 
-    payload = json.dumps({"title": "Dup title", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True})
+    payload = json.dumps({"title": "Dup title", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True, "language_confirmed": True})
     files = {"file": ("clip.webm", io.BytesIO(b"fake-audio-bytes"), "audio/webm")}
 
     with patch("app.api.v1.media.storage_service.compute_sha256", return_value="a" * 64):
@@ -68,7 +68,7 @@ async def test_upload_media_rejects_oversized(client, auth_headers):
     settings = get_settings()
     huge = b"x" * (settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024 + 1)
 
-    payload = json.dumps({"title": "Huge", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True})
+    payload = json.dumps({"title": "Huge", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True, "language_confirmed": True})
     files = {"file": ("clip.webm", io.BytesIO(huge), "audio/webm")}
 
     resp = await client.post(
