@@ -15,7 +15,7 @@ export interface User {
 
 export interface Media {
   id: string;
-  kind: "audio" | "video" | "image";
+  kind: "audio" | "video" | "image" | "text";
   title: string;
   speaker: string | null;
   dialect: string | null;
@@ -25,6 +25,9 @@ export interface Media {
   license: string | null;
   lang_score: number | null;
   file_url?: string;
+  summary?: string;
+  source_url?: string;
+  source_name?: string;
 }
 
 export interface Segment {

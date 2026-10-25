@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getAccessToken } from "@/lib/auth";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 export default function ResearcherPage() {
   const [dialect, setDialect] = useState("");
@@ -20,7 +20,10 @@ export default function ResearcherPage() {
       const res = await fetch(`${API_URL}${path}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.detail ?? `Export unavailable (HTTP ${res.status}).`);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -40,40 +43,21 @@ export default function ResearcherPage() {
       <div className="max-w-xl mx-auto py-8 space-y-6">
         <h1 className="text-2xl font-bold">Researcher Exports</h1>
         <p className="text-gray-600 text-sm">
-          Export datasets for ASR, TTS, MT, or LLM training. License metadata
-          is preserved per row. Respect NC and Restricted licenses.
+          Export datasets for ASR, TTS, MT, or LLM training. Licence metadata
+          is preserved per row. Respect NC and Restricted licences.
         </p>
-
         <label className="block">
           <span className="text-sm font-medium">Dialect filter (optional)</span>
-          <input
-            type="text"
-            value={dialect}
-            onChange={(e) => setDialect(e.target.value)}
-            placeholder="Ki-Muranga"
-            className="w-full p-3 border rounded-lg mt-1"
-          />
+          <input type="text" value={dialect} onChange={(e) => setDialect(e.target.value)} placeholder="Ki-Muranga" className="w-full p-3 border rounded-lg mt-1" />
         </label>
-
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => download("jsonl")}
-            disabled={downloading !== null}
-            className="flex-1 py-3 bg-earth-500 text-white rounded-lg disabled:opacity-50"
-          >
+          <button type="button" onClick={() => download("jsonl")} disabled={downloading !== null} className="flex-1 py-3 bg-earth-500 text-white rounded-lg disabled:opacity-50">
             {downloading === "jsonl" ? "..." : "Download JSONL"}
           </button>
-          <button
-            type="button"
-            onClick={() => download("csv")}
-            disabled={downloading !== null}
-            className="flex-1 py-3 border border-earth-500 text-earth-500 rounded-lg disabled:opacity-50"
-          >
+          <button type="button" onClick={() => download("csv")} disabled={downloading !== null} className="flex-1 py-3 border border-earth-500 text-earth-500 rounded-lg disabled:opacity-50">
             {downloading === "csv" ? "..." : "Download CSV"}
           </button>
         </div>
-
         {error && <p role="alert" className="text-red-600">{error}</p>}
       </div>
     </ProtectedRoute>
