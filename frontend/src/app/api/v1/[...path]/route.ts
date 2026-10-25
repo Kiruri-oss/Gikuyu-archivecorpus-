@@ -24,6 +24,12 @@ async function forward(request: NextRequest, context: RouteContext) {
 
   let body: ArrayBuffer | undefined;
   if (!["GET", "HEAD"].includes(request.method)) {
+    const declaredLength = Number(request.headers.get("content-length") ?? "0");
+    if (declaredLength > 2_200_000) {
+      return NextResponse.json({
+        detail: "This request is too large for the web proxy. Configure NEXT_PUBLIC_API_URL to point directly to the archive API for large media uploads.",
+      }, { status: 413, headers: { "Cache-Control": "no-store" } });
+    }
     const raw = await request.arrayBuffer();
     if (raw.byteLength > 2_200_000) {
       return NextResponse.json({
