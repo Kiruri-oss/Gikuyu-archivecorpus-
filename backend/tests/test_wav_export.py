@@ -34,10 +34,11 @@ def test_wav_export_bundle_contains_audio_and_source_provenance(monkeypatch):
         with zipfile.ZipFile(zip_path) as archive:
             assert "audio/media-123.wav" in archive.namelist()
             manifest = json.loads(archive.read("manifest.json"))
+            audio_content = archive.read("audio/media-123.wav")
         assert manifest["language_code"] == "ki"
         assert manifest["records"][0]["source_url"] == record["source_url"]
         assert manifest["records"][0]["license"] == "CC0"
         assert manifest["records"][0]["allow_ai_training"] is True
-        assert archive.read("audio/media-123.wav") == wav
+        assert audio_content == wav
     finally:
         os.unlink(zip_path)
