@@ -77,3 +77,75 @@ async def test_takedown_request_hides_approved_source_and_action_removes_text(
     assert source.status == SourceStatus.TAKEN_DOWN
     remaining = await db_session.execute(select(TextRecord).where(TextRecord.source_id == source.id))
     assert remaining.scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_takedown_keeps_media_row_when_object_storage_cleanup_fails(
+    client, db_session, monkeypatch
+):
+    from app.models.media import Media, MediaKind
+
+    source = Source(
+        url="https://publisher.example/gikuyu-audio",
+        domain="publisher.example",
+        source_type=SourceType.WEB,
+        status=SourceStatus.APPROVED,
+        license="CC-BY",
+        raw_metadata="{}",
+    )
+    db_session.add(source)
+    await db_session.flush()
+    media = Media(
+        source_id=source.id,
+        kind=MediaKind.AUDIO,
+        title="Gĩkũyũ recording",
+        file_key="test/gikuyu-audio.wav",
+        sha256="f" * 64,
+        license="CC-BY",
+        allow_public_display=True,
+    )
+    db_session.add(media)
+    await db_session.commit()
+
+    request_response = await client.post(
+        "/api/v1/takedowns",
+        json={
+            "url": source.url,
+            "requester_name": "Rights holder",
+            "requester_email": "rights@example.com",
+            "reason": "I own this recording and request its removal from the archive.",
+        },
+    )
+    assert request_response.status_code == 201
+    takedown_id = request_response.json()["id"]
+
+    admin = User(
+        email="cleanup-admin@example.com",
+        full_name="Cleanup Admin",
+        hashed_password=hash_password("SecureAdminPass123!"),
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+    db_session.add(admin)
+    await db_session.commit()
+    token = create_access_token(str(admin.id), admin.role.value)
+
+    async def no_index_delete(_index, _document_id):
+        return None
+
+    def failed_storage_delete(_bucket, _file_key):
+        raise RuntimeError("storage unavailable")
+
+    monkeypatch.setattr(takedown_module.search_index, "delete_document", no_index_delete)
+    monkeypatch.setattr(takedown_module.storage_service, "delete", failed_storage_delete)
+
+    response = await client.post(
+        f"/api/v1/takedowns/{takedown_id}/action",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == TakedownStatus.UNDER_REVIEW.value
+    await db_session.refresh(source)
+    assert source.status == SourceStatus.TAKEN_DOWN
+    assert await db_session.get(Media, media.id) is not None
