@@ -13,6 +13,7 @@ class MediaCreate(BaseModel):
     license: str = Field(min_length=1, max_length=100)
     consent_to_archive: bool = False
     confirm_rights: bool = False
+    speaker_consent_confirmed: bool = False
     consent_to_publish: bool = False
     allow_research_use: bool = False
     allow_ai_training: bool = False
