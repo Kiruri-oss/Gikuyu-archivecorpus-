@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   },
   description: "Explore public Gĩkũyũ and Kikuyu-language references. A transparent first step towards a community-governed language archive.",
   applicationName: "Gĩkũyũ Archive",
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: "Gĩkũyũ Archive",
@@ -35,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={inter.className}>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-earth-900">Skip to content</a>
         <Navbar />
         <main id="main-content" className="mx-auto min-h-[70vh] max-w-6xl px-4 py-2 sm:px-6">{children}</main>
         <footer className="mt-12 border-t border-gray-200 bg-gray-50">
