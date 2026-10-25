@@ -57,9 +57,9 @@ jobs:
           node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-search.json","utf8")); if(!Array.isArray(d.media) || d.media.length===0) { console.error(d); process.exit(1); }'
           invalid_language_status=$(curl --silent --output /tmp/gikuyu-invalid-language.json --write-out "%{http_code}" "http://127.0.0.1:3000/api/v1/search?q=Kinyarwanda&lang=not-a-language")
           test "$invalid_language_status" = "400"
-          language_status=$(curl --silent --output /tmp/gikuyu-rw-search.json --write-out "%{http_code}" --max-time 20 "http://127.0.0.1:3000/api/v1/search?q=Kinyarwanda&lang=rw")
-          test "$language_status" = "200"
-          node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-rw-search.json","utf8")); if(d.language!=="rw" || !Array.isArray(d.media) || d.media.length===0) { console.error(d); process.exit(1); }'
+          non_gikuyu_status=$(curl --silent --output /tmp/gikuyu-non-gikuyu.json --write-out "%{http_code}" --max-time 20 "http://127.0.0.1:3000/api/v1/search?q=Kinyarwanda&lang=rw")
+          test "$non_gikuyu_status" = "400"
+          node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-non-gikuyu.json","utf8")); if(!String(d.detail||"").includes("Gĩkũyũ")) { console.error(d); process.exit(1); }'
           languages_page_status=$(curl --silent --output /tmp/gikuyu-languages.html --write-out "%{http_code}" http://127.0.0.1:3000/languages)
           test "$languages_page_status" = "200"
   backend:
