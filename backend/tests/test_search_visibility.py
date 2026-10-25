@@ -81,4 +81,4 @@ async def test_search_hides_takedown_and_non_gikuyu_text_from_stale_index(client
 
     assert response.status_code == 200
     assert [item["id"] for item in response.json()["texts"]] == [str(approved.id)]
-    assert [item["id"] for item in response.json()["media"]] == [str(approved.id)]
+    assert response.json()["media"] == []
