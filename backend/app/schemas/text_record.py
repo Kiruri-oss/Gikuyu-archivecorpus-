@@ -37,6 +37,7 @@ class TextRecordRead(BaseModel):
     author: str | None
     year: int | None
     body: str
+    source_url: str | None = None
     language_code: str
     dialect: str | None
     genre: str | None
