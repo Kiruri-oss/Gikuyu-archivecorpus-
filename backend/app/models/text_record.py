@@ -25,6 +25,7 @@ class TextRecord(Base, TimestampMixin):
     size_bytes: Mapped[int | None] = mapped_column(BigInteger)
     lang_score: Mapped[float | None] = mapped_column(Float)
     license: Mapped[str] = mapped_column(String(100), nullable=False)
+    allow_public_display: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     allow_research_use: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     allow_ai_training: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     allow_commercial_use: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
