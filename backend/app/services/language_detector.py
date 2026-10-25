@@ -1,4 +1,6 @@
+import re
 from functools import lru_cache
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
 
@@ -7,15 +9,18 @@ settings = get_settings()
 
 
 class LanguageDetector:
-    """
-    Lightweight heuristic + optional transformer-based Kikuyu detector.
-    Falls back to trigram frequency when the transformer is unavailable.
-    """
+    """Lightweight Gĩkũyũ-first heuristic with an optional multilingual model."""
 
     KIKUYU_MARKERS = (
         "na", "kĩ", "ũ", "mũ", "gĩ", "ny", "th", "ng'", "nj", "mb", "nd",
         "kũ", "rĩ", "ũrĩ", "nĩ", "ũndũ", "andũ", "mũndũ", "gũkũ",
     )
+    # Whole-word markers are more discriminative than short character fragments.
+    KIKUYU_STRONG_WORDS = frozenset({
+        "gĩkũyũ", "mũciĩ", "mũndũ", "andũ", "ũhoro", "ũndũ", "gũkũ",
+        "ũrĩ", "nĩ", "rĩu", "mũtĩ", "gĩthaka", "mũthenya", "kũrĩ",
+        "ũgĩ", "thĩ", "ndũrĩ", "wĩ", "nĩwe", "nĩĩ",
+    })
     SWAHILI_MARKERS = ("na", "ya", "wa", "kwa", "hii", "hiyo", "sana", "kabisa")
     ENGLISH_MARKERS = ("the", "and", "with", "this", "that", "from", "have")
 
@@ -32,14 +37,23 @@ class LanguageDetector:
         if not text or not text.strip():
             return ("unknown", 0.0)
 
-        sample = text.lower()[:2000]
+        sample = text.lower()[:5000]
+        tokens = re.findall(r"[^\W\d_]+(?:['’][^\W\d_]+)*", sample, flags=re.UNICODE)
+        diacritic_tokens = sum(any(char in token for char in "ĩũ") for token in tokens)
+        strong_hits = sum(token in self.KIKUYU_STRONG_WORDS for token in tokens)
 
-        # Fast path: Kikuyu-specific digraph/trigraph signals
-        kik_hits = sum(sample.count(m) for m in self.KIKUYU_MARKERS)
-        sw_hits = sum(sample.count(m) for m in self.SWAHILI_MARKERS)
-        en_hits = sum(sample.count(m) for m in self.ENGLISH_MARKERS)
+        # Gĩkũyũ orthography has highly informative ĩ/ũ patterns. This path keeps
+        # the hunter useful without requiring the optional heavyweight model.
+        if len(tokens) >= 8 and strong_hits >= 2 and diacritic_tokens >= 2:
+            score = min(0.99, 0.70 + 0.04 * min(strong_hits, 5) + 0.02 * min(diacritic_tokens, 5))
+            return ("ki", round(score, 4))
+        if len(tokens) >= 12 and diacritic_tokens >= 5:
+            return ("ki", 0.72)
+
+        kik_hits = sum(sample.count(marker) for marker in self.KIKUYU_MARKERS)
+        sw_hits = sum(sample.count(marker) for marker in self.SWAHILI_MARKERS)
+        en_hits = sum(sample.count(marker) for marker in self.ENGLISH_MARKERS)
         total = kik_hits + sw_hits + en_hits + 1
-
         kik_ratio = kik_hits / total
         if kik_ratio >= settings.LANGUAGE_DETECTION_THRESHOLD:
             return ("ki", round(kik_ratio, 4))
