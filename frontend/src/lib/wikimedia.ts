@@ -53,7 +53,7 @@ export async function searchWikimedia(query: string, limit = 30, languageCode = 
       kind: "text",
       title: item.title,
       speaker: null,
-      dialect: language.name,
+      dialect: host === "en.wikipedia.org" ? "English reference" : language.name,
       county: null,
       genre: "Public reference",
       duration_seconds: null,
