@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DailyProverb } from "@/components/DailyProverb";
 
 const archivePillars = [
   {
@@ -40,6 +41,8 @@ export default function HomePage() {
           <p className="max-w-2xl text-sm leading-6 text-white/65">The public website currently exposes source discovery. Persistent community submissions, audio storage and review workflows still need production infrastructure; the site will not claim that an upload was saved when it was not.</p>
         </div>
       </section>
+
+      <DailyProverb />
 
       <section className="space-y-5">
         <div className="max-w-3xl space-y-2">
