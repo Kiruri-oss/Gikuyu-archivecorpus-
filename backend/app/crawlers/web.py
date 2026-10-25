@@ -46,7 +46,9 @@ class WebCrawler(BaseCrawler):
                 })
                 logger.info("crawler.open_licensed_kikuyu_found", url=page.url, license=page.license, confidence=page.confidence)
             elif page is None:
-                logger.info("crawler.page_not_ingested", url=url, reason="short_content_or_unverified_license")
+                logger.info("crawler.page_not_ingested", url=url, reason="short_content_or_unparseable")
+            elif not page.license:
+                logger.info("crawler.discovery_only", url=url, reason="no_approved_open_license_detected")
 
             if page:
                 for link in page.links:
