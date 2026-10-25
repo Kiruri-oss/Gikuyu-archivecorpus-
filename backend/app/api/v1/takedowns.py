@@ -50,46 +50,79 @@ async def list_takedowns(db: DbSession, _: AdminUser) -> list[TakedownRead]:
     return [TakedownRead.model_validate(t) for t in result.scalars().all()]
 
 
+async def _delete_index_document(index: str, document_id: uuid.UUID) -> bool:
+    try:
+        await search_index.delete_document(index, str(document_id))
+        return True
+    except Exception as exc:
+        logger.warning(
+            "takedown.index_delete_failed",
+            index=index,
+            document_id=str(document_id),
+            error=str(exc),
+        )
+        return False
+
+
 @router.post("/{takedown_id}/action", response_model=TakedownRead)
 async def action_takedown(takedown_id: uuid.UUID, db: DbSession, _: AdminUser) -> TakedownRead:
     takedown = await db.get(Takedown, takedown_id)
     if not takedown:
         raise HTTPException(status_code=404, detail="Takedown not found")
 
+    cleanup_errors: list[str] = []
     source_result = await db.execute(select(Source).where(Source.url == takedown.url))
     source = source_result.scalar_one_or_none()
     if source:
-        # Hide the source first so stale index entries cannot keep it publicly visible.
+        # Hide first. Search also checks the database publication state, so a
+        # failed index request cannot make a taken-down record visible again.
         source.status = SourceStatus.TAKEN_DOWN
         await db.flush()
 
         media_result = await db.execute(select(Media).where(Media.source_id == source.id))
         for media in media_result.scalars().all():
             segment_result = await db.execute(select(Segment.id).where(Segment.media_id == media.id))
-            for (segment_id,) in segment_result.all():
-                try:
-                    await search_index.delete_document("segments", str(segment_id))
-                except Exception as exc:
-                    logger.warning("takedown.segment_index_delete_failed", segment_id=str(segment_id), error=str(exc))
+            segment_ids = [segment_id for (segment_id,) in segment_result.all()]
+            segments_cleaned = True
+            for segment_id in segment_ids:
+                if not await _delete_index_document("segments", segment_id):
+                    segments_cleaned = False
+                    cleanup_errors.append(f"segment index cleanup failed for {segment_id}")
+
+            media_index_cleaned = await _delete_index_document("media", media.id)
             try:
                 storage_service.delete(settings.S3_BUCKET_AUDIO, media.file_key)
+                storage_cleaned = True
             except Exception as exc:
+                storage_cleaned = False
+                cleanup_errors.append(f"object storage cleanup failed for media {media.id}")
                 logger.error("takedown.storage_delete_failed", media_id=str(media.id), error=str(exc))
-            try:
-                await search_index.delete_document("media", str(media.id))
-            except Exception as exc:
-                logger.warning("takedown.media_index_delete_failed", media_id=str(media.id), error=str(exc))
-            await db.delete(media)
+
+            # Retain the media/segment rows as retry handles if any external
+            # cleanup failed. SourceStatus.TAKEN_DOWN keeps them out of public APIs.
+            if storage_cleaned and media_index_cleaned and segments_cleaned:
+                await db.delete(media)
+            elif not media_index_cleaned:
+                cleanup_errors.append(f"media index cleanup failed for {media.id}")
 
         text_result = await db.execute(select(TextRecord).where(TextRecord.source_id == source.id))
         for record in text_result.scalars().all():
-            try:
-                await search_index.delete_document("texts", str(record.id))
-            except Exception as exc:
-                logger.warning("takedown.text_index_delete_failed", record_id=str(record.id), error=str(exc))
-            await db.delete(record)
+            if await _delete_index_document("texts", record.id):
+                await db.delete(record)
+            else:
+                cleanup_errors.append(f"text index cleanup failed for {record.id}")
 
-    takedown.status = TakedownStatus.ACTIONED
-    takedown.actioned_at = datetime.now(timezone.utc)
+    if cleanup_errors:
+        takedown.status = TakedownStatus.UNDER_REVIEW
+        takedown.actioned_at = None
+        takedown.admin_notes = (
+            "Source hidden. External cleanup remains incomplete and requires retry: "
+            + "; ".join(cleanup_errors)[:4000]
+        )
+    else:
+        takedown.status = TakedownStatus.ACTIONED
+        takedown.actioned_at = datetime.now(timezone.utc)
+        takedown.admin_notes = "Source hidden and available archive records were removed."
+
     await db.flush()
     return TakedownRead.model_validate(takedown)
