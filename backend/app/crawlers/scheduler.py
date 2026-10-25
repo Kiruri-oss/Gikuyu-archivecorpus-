@@ -148,7 +148,7 @@ class CrawlScheduler:
 
     def start(self) -> None:
         if not self.scheduler.running:
-            self.scheduler.add_job(self.run_web_crawl, "interval", hours=6, id="web_crawl", replace_existing=True)
+            self.scheduler.add_job(\n                self.run_web_crawl,\n                "interval",\n                hours=6,\n                id="web_crawl",\n                replace_existing=True,\n                next_run_time=datetime.now(timezone.utc),\n                max_instances=1,\n                coalesce=True,\n            )
             self.scheduler.start()
             logger.info("scheduler.started", seed_count=len(SEED_URLS), max_pages=500, interval_hours=6)
 
