@@ -55,18 +55,58 @@ async def search(
     )
     approved_segment_ids = {str(value) for value in approved_segments.scalars().all()}
 
+    media_hits = [
+        {
+            **hit,
+            "kind": hit.get("kind", "audio"),
+            "source_name": "Gĩkũyũ Archive Corpus",
+        }
+        for hit in media_results.get("hits", [])
+        if str(hit.get("id", "")) in approved_media_ids
+    ]
+    text_hits = [
+        {
+            **hit,
+            "kind": "text",
+            "summary": hit.get("body", ""),
+            "source_name": "Gĩkũyũ Archive Corpus",
+        }
+        for hit in text_results.get("hits", [])
+        if str(hit.get("id", "")) in approved_text_ids
+    ]
+
+    # Transcript matches lead to the owning recording's detail page. Avoid
+    # duplicating a recording already present in the media search results.
+    visible_ids = {str(hit.get("id", "")) for hit in media_hits + text_hits}
+    segment_hits = [
+        hit for hit in segment_results.get("hits", [])
+        if str(hit.get("id", "")) in approved_segment_ids
+    ]
+    transcript_hits = []
+    for hit in segment_hits:
+        media_id = str(hit.get("media_id", ""))
+        if not media_id or media_id not in approved_media_ids or media_id in visible_ids:
+            continue
+        visible_ids.add(media_id)
+        transcript = " ".join(part for part in (hit.get("transcript"), hit.get("translation")) if part)
+        transcript_hits.append({
+            "id": media_id,
+            "kind": "audio",
+            "title": "Recording with matching transcript",
+            "speaker": None,
+            "dialect": hit.get("dialect") or "Gĩkũyũ",
+            "county": None,
+            "genre": "Transcript match",
+            "duration_seconds": None,
+            "license": None,
+            "lang_score": None,
+            "summary": transcript,
+            "source_name": "Gĩkũyũ Archive Corpus",
+        })
+
     return {
         "query": q,
-        "media": [
-            hit for hit in media_results.get("hits", [])
-            if str(hit.get("id", "")) in approved_media_ids
-        ],
-        "segments": [
-            hit for hit in segment_results.get("hits", [])
-            if str(hit.get("id", "")) in approved_segment_ids
-        ],
-        "texts": [
-            hit for hit in text_results.get("hits", [])
-            if str(hit.get("id", "")) in approved_text_ids
-        ],
+        "media": media_hits + text_hits + transcript_hits,
+        "segments": segment_hits,
+        "texts": text_hits,
     }
