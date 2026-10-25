@@ -58,7 +58,7 @@ class CrawlScheduler:
                     raw_metadata=json.dumps({
                         "discovery_method": "robots-respecting-open-license-hunter",
                         "date_found": datetime.now(timezone.utc).isoformat(),
-                        "license_verified": True,
+                        "license_detected": True,
                         "license_url": item.get("license_url"),
                         "source_url": url,
                         "review_required": True,
