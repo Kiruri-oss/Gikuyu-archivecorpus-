@@ -112,7 +112,7 @@ export default function ContributePage() {
         <p className="leading-7 text-gray-600">Add a proverb, riddle, story, original text or recording. Submissions enter review first; they are not automatically published or included in AI-training datasets.</p>
       </header>
 
-      {!backendConfigured && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950"><h2 className="font-semibold">Production storage is not connected</h2><p className="mt-2 text-sm leading-6">The form is implemented, but this deployment has no configured archive API. Submitting is disabled so your material is not lost or falsely reported as saved. No contribution has been sent.</p></div>}
+      
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Contribution type">
         <button type="button" onClick={() => { setKind("text"); resetMessages(); }} aria-pressed={kind === "text"} className={`rounded-lg px-4 py-2 font-semibold ${kind === "text" ? "bg-earth-900 text-white" : "border border-gray-300 text-gray-700"}`}>Text contribution</button>
@@ -153,8 +153,8 @@ export default function ContributePage() {
 
         {error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm leading-6 text-red-900">{error}</p>}
         {success && <p role="status" className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm leading-6 text-green-900">{success}</p>}
-        {!backendConfigured && <p className="text-sm text-gray-500">You can still prepare your text locally, but do not close this page expecting it to be stored. The archive backend must be connected before submission is enabled.</p>}
-        <div className="flex flex-wrap items-center gap-4"><button type="submit" disabled={!backendConfigured || busy} className="rounded-lg bg-earth-900 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Submitting…" : "Submit for review"}</button><Link href="/login" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Sign in</Link><Link href="/register" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Create contributor account</Link></div>
+        
+        <div className="flex flex-wrap items-center gap-4"><button type="submit" disabled={busy} className="rounded-lg bg-earth-900 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Submitting…" : "Submit for review"}</button><Link href="/auth/login" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Sign in</Link><Link href="/auth/register" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Create contributor account</Link></div>
       </form>
     </section>
   );
