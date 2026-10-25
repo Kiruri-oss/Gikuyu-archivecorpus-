@@ -9,16 +9,16 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL("https://gikuyu-archivecorpus.vercel.app"),
   title: {
-    default: "Gĩkũyũ Archive — Language, Memory, Community",
+    default: "Gĩkũyũ Archive Corpus — Language, Memory, Research",
     template: "%s | Gĩkũyũ Archive",
   },
-  description: "Explore public Gĩkũyũ and Kikuyu-language references. A transparent first step towards a community-governed language archive.",
+  description: "A growing Gĩkũyũ language corpus for words, proverbs, stories, oral histories, transcription, annotation and rights-aware language research.",
   applicationName: "Gĩkũyũ Archive",
   openGraph: {
     type: "website",
     siteName: "Gĩkũyũ Archive",
     title: "Gĩkũyũ Archive — Language, Memory, Community",
-    description: "Explore public Gĩkũyũ and Kikuyu-language references with source links and rights-aware guidance.",
+    description: "Building a searchable Gĩkũyũ corpus with provenance, transcription, annotation and permission-aware research datasets.",
     url: "https://gikuyu-archivecorpus.vercel.app",
   },
   robots: { index: true, follow: true },
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main-content" className="mx-auto min-h-[70vh] max-w-6xl px-4 py-2 sm:px-6">{children}</main>
         <footer className="mt-12 border-t border-gray-200 bg-gray-50">
           <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <p>Gĩkũyũ Archive · Public-source discovery, built with care.</p>
+            <p>Gĩkũyũ Archive Corpus · Preserve the language. Build the data. Respect the people.</p>
             <nav aria-label="Footer navigation" className="flex flex-wrap gap-x-5 gap-y-2">
               <Link href="/about">About</Link>
               <Link href="/privacy">Privacy</Link>
