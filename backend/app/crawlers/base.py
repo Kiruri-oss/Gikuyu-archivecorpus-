@@ -15,6 +15,7 @@ logger = get_logger(__name__)
 settings = get_settings()
 MAX_PAGE_BYTES = 5 * 1024 * 1024
 MAX_REDIRECTS = 5
+UNKNOWN_LICENCE = "UNKNOWN — licence not stated"
 
 
 @dataclass
@@ -27,13 +28,13 @@ class CrawlResult:
     links: list[str]
     license: str
     license_url: str | None = None
-    permits_research: bool = True
-    permits_ai_training: bool = True
-    permits_commercial_use: bool = True
+    permits_research: bool = False
+    permits_ai_training: bool = False
+    permits_commercial_use: bool = False
 
 
 class BaseCrawler:
-    """Rights-first public web hunter with mandatory robots compliance."""
+    """Public-web Gĩkũyũ hunter with robots compliance and explicit rights metadata."""
 
     def __init__(self) -> None:
         self.headers = {
@@ -52,7 +53,6 @@ class BaseCrawler:
         if not is_safe_http_url(url):
             logger.warning("crawler.url_rejected", url=url, reason="unsafe_url")
             return False
-
         parsed = urlparse(url)
         origin = f"{parsed.scheme}://{parsed.netloc}"
         async with self._robots_lock:
@@ -79,7 +79,6 @@ class BaseCrawler:
                 logger.warning("crawler.robots_fetch_failed", origin=origin, error=str(exc))
             async with self._robots_lock:
                 self._robots[origin] = parser
-
         allowed = parser is not None and parser.can_fetch(settings.CRAWLER_USER_AGENT, url)
         if not allowed:
             logger.info("crawler.robots_disallowed_or_unknown", url=url)
@@ -95,7 +94,6 @@ class BaseCrawler:
         if not is_safe_http_url(current_url):
             logger.warning("crawler.url_rejected", url=url, reason="unsafe_url")
             return None
-
         async with self.semaphore:
             original_host = urlparse(current_url).hostname
             for _ in range(MAX_REDIRECTS + 1):
@@ -147,28 +145,27 @@ class BaseCrawler:
         licence = detect_open_licence(html, base_url)
         for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form"]):
             tag.decompose()
-
         title = (soup.title.string or "").strip() if soup.title else ""
         body = soup.get_text(separator=" ", strip=True)
         if len(body) < 100:
             return None
-
         language, score = language_detector.detect(body)
         links = [
             canonicalize_url(urljoin(base_url, str(anchor["href"])))
             for anchor in soup.find_all("a", href=True)
             if is_safe_http_url(urljoin(base_url, str(anchor["href"])))
         ]
+        rights_known = licence is not None
         return CrawlResult(
             url=canonicalize_url(base_url),
             title=title[:500] or base_url,
             text=body[:50000],
             language=language,
             confidence=score,
-            links=list(dict.fromkeys(links))[:100],
-            license=licence.name if licence else license_name,
-            license_url=licence.url or None if licence else None,
-            permits_research=licence.permits_research if licence else True,
-            permits_ai_training=licence.permits_ai_training if licence else True,
-            permits_commercial_use=licence.permits_commercial_use if licence else True,
+            links=list(dict.fromkeys(links))[:200],
+            license=licence.name if licence else (license_name or UNKNOWN_LICENCE),
+            license_url=licence.url if licence and licence.url else None,
+            permits_research=licence.permits_research if rights_known else False,
+            permits_ai_training=licence.permits_ai_training if rights_known else False,
+            permits_commercial_use=licence.permits_commercial_use if rights_known else False,
         )
