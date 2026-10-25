@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.deps import DbSession, CurrentUser
 from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
-from app.schemas.text_record import TextRecordCreate, TextRecordRead
+from app.schemas.text_record import TextRecordCreate, TextRecordRead, TextRecordSubmissionRead
 
 router = APIRouter(prefix="/text-records", tags=["text records"])
 
@@ -53,7 +53,7 @@ async def get_text_record(record_id: uuid.UUID, db: DbSession) -> TextRecordRead
     return TextRecordRead.model_validate(record)
 
 
-@router.post("", response_model=TextRecordRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=TextRecordSubmissionRead, status_code=status.HTTP_201_CREATED)
 async def create_text_record(
     payload: TextRecordCreate, db: DbSession, user: CurrentUser
 ) -> TextRecordRead:
@@ -77,6 +77,7 @@ async def create_text_record(
         license=payload.license,
         raw_metadata=json.dumps({
             "contributor_id": str(user.id),
+            "consent_to_publish": payload.consent_to_publish,
             "allow_research_use": payload.allow_research_use,
             "allow_ai_training": payload.allow_ai_training,
             "allow_commercial_use": payload.allow_commercial_use,
@@ -100,6 +101,7 @@ async def create_text_record(
         sha256=digest,
         size_bytes=len(normalized_body.encode("utf-8")),
         license=payload.license,
+        allow_public_display=payload.consent_to_publish,
         allow_research_use=payload.allow_research_use,
         allow_ai_training=payload.allow_ai_training,
         allow_commercial_use=payload.allow_commercial_use,
@@ -111,4 +113,4 @@ async def create_text_record(
     except IntegrityError as exc:
         await db.rollback()
         raise HTTPException(status_code=409, detail="This text already exists.") from exc
-    return TextRecordRead.model_validate(record)
+    return TextRecordSubmissionRead.model_validate(record)
