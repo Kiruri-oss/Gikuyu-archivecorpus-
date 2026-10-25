@@ -58,4 +58,4 @@ jobs:
           S3_ACCESS_KEY: test
           S3_SECRET_KEY: test
           MEILISEARCH_KEY: test
-        run: pytest -q
+        run: pytest -q -o log_cli=false
