@@ -20,6 +20,13 @@ class TextRecordCreate(BaseModel):
     confirm_rights: bool = False
     notes: str | None = Field(default=None, max_length=5000)
 
+    @field_validator("language_code")
+    @classmethod
+    def require_gikuyu_only(cls, value: str) -> str:
+        if value.lower() != "ki":
+            raise ValueError("Gĩkũyũ Archive Corpus accepts Gĩkũyũ (ki) records only.")
+        return "ki"
+
     @field_validator("title", "body", "license")
     @classmethod
     def trim_required_text(cls, value: str) -> str:
