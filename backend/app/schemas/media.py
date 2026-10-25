@@ -6,6 +6,7 @@ from app.models.media import MediaKind
 
 class MediaCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
+    language_code: Literal["ki"] = "ki"
     speaker: str | None = Field(default=None, max_length=200)
     dialect: str | None = Field(default=None, max_length=100)
     county: str | None = Field(default=None, max_length=100)
@@ -35,6 +36,7 @@ class MediaRead(BaseModel):
     id: uuid.UUID
     kind: MediaKind
     title: str
+    language_code: Literal["ki"] = "ki"
     speaker: str | None
     dialect: str | None
     county: str | None
