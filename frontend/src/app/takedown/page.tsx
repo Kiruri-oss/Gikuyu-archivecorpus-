@@ -36,7 +36,7 @@ export default function TakedownPage() {
         url: url.trim(),
         requester_name: name.trim(),
         requester_email: email.trim(),
-        reason: "Rights-holder or authorised-representative attestation: confirmed.\\n\\n" + reason.trim(),
+        reason: "Rights-holder or authorised-representative attestation: confirmed.\n\n" + reason.trim(),
       });
       setReceipt(result);
       setUrl("");
