@@ -133,3 +133,29 @@ def test_pdf_extraction_skips_encrypted_files_without_an_empty_password(monkeypa
 
     monkeypatch.setattr("app.crawlers.base.PdfReader", FakeReader)
     assert BaseCrawler._pdf_to_html(b"%PDF encrypted fixture", "https://example.org/locked.pdf") is None
+
+
+def test_epub_book_text_is_extracted_without_writing_archive_members_to_disk():
+    import io
+    import zipfile
+
+    from bs4 import BeautifulSoup
+
+    from app.crawlers.base import BaseCrawler
+
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as book:
+        book.writestr(
+            "OEBPS/chapter.xhtml",
+            "<html><head><title>Gĩkũyũ folklore</title></head><body>"
+            "<p>Nĩguo mũndũ aĩkaga wĩra wake mũciĩ. Andũ nĩmagĩrĩire ũndũ ũcio.</p>"
+            "</body></html>",
+        )
+
+    document = BaseCrawler._epub_to_html(payload.getvalue(), "https://example.org/folklore.epub")
+
+    assert document is not None
+    parsed = BeautifulSoup(document, "lxml")
+    assert parsed.title is not None
+    assert parsed.title.get_text() == "Gĩkũyũ folklore"
+    assert "mũciĩ" in parsed.get_text().lower()
