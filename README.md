@@ -7,7 +7,7 @@
 
 Gĩkũyũ Archive Corpus is intended to become a substantial, searchable digital library for Gĩkũyũ: vocabulary, proverbs, riddles, folklore, literature, oral histories, consent-based audio, time-aligned transcripts, translations, dialect information, orthography review and responsibly licensed AI-training datasets.
 
-This product is exclusively for Gĩkũyũ (Kikuyu, ISO 639-3: kik). It is not a multilingual archive, and adding other language corpora is outside this project's objective. English-language pages may be used only as supporting discovery references where useful; they are never a substitute for Gĩkũyũ material.
+This product is exclusively for Gĩkũyũ (Kikuyu, ISO 639-3: kik). It is not a multilingual archive, and material in other languages is outside this project's corpus scope.
 
 ## What the current deployment actually does
 
