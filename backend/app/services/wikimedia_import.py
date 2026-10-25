@@ -147,6 +147,7 @@ async def import_random_wikipedia_pages(
 
         record = TextRecord(
             source_id=source.id,
+            source=source,
             title=title,
             body=body,
             language_code=code,
