@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.core.deps import DbSession, CurrentUser, ReviewerUser
 from app.models.media import Media, MediaKind
 from app.models.source import Source, SourceType, SourceStatus
-from app.schemas.media import MediaRead, MediaDetail, MediaCreate
+from app.schemas.media import MediaRead, MediaDetail, MediaCreate, MediaSubmissionDetail
 from app.services.storage import storage_service
 from app.services.language_detector import language_detector
 from app.services.dedup import dedup_service
@@ -35,7 +35,7 @@ async def list_media(
     limit: int = 50,
     offset: int = 0,
 ) -> list[MediaRead]:
-    stmt = select(Media).order_by(Media.created_at.desc()).limit(min(limit, 100)).offset(offset)
+    stmt = select(Media).join(Source, Media.source_id == Source.id).where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True)).order_by(Media.created_at.desc()).limit(max(1, min(limit, 100))).offset(max(0, offset))
     if dialect:
         stmt = stmt.where(Media.dialect == dialect)
     if genre:
@@ -46,21 +46,25 @@ async def list_media(
 
 @router.get("/{media_id}", response_model=MediaDetail)
 async def get_media(media_id: uuid.UUID, db: DbSession) -> MediaDetail:
-    media = await db.get(Media, media_id)
+    stmt = select(Media).join(Source, Media.source_id == Source.id).where(Media.id == media_id, Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True))
+    result = await db.execute(stmt)
+    media = result.scalar_one_or_none()
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
     return _build_media_detail(media)
 
 
-@router.post("", response_model=MediaDetail, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=MediaSubmissionDetail, status_code=status.HTTP_201_CREATED)
 async def upload_media(
     db: DbSession,
     user: CurrentUser,
     file: UploadFile = File(...),
     meta: str = Form(...),
-) -> MediaDetail:
+ ) -> MediaSubmissionDetail:
     import json
     parsed = MediaCreate.model_validate(json.loads(meta))
+    if not parsed.consent_to_archive or not parsed.confirm_rights:
+        raise HTTPException(status_code=422, detail="Confirm your right to contribute this recording and consent to its storage for review.")
 
     raw = await file.read()
     if len(raw) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
@@ -77,7 +81,17 @@ async def upload_media(
         url=f"upload://{sha}",
         domain="user_upload",
         source_type=SourceType.USER_UPLOAD,
-        status=SourceStatus.APPROVED,
+        status=SourceStatus.PENDING,
+        license=parsed.license,
+        raw_metadata=json.dumps({
+            "contributor_id": str(user.id),
+            "consent_to_publish": parsed.consent_to_publish,
+            "allow_research_use": parsed.allow_research_use,
+            "allow_ai_training": parsed.allow_ai_training,
+            "allow_commercial_use": parsed.allow_commercial_use,
+            "consent_to_archive": parsed.consent_to_archive,
+            "rights_confirmed": parsed.confirm_rights,
+        }),
     )
     db.add(source)
     await db.flush()
@@ -97,24 +111,18 @@ async def upload_media(
         mime_type=file.content_type,
         lang_score=score,
         license=parsed.license,
+        allow_public_display=parsed.consent_to_publish,
+        allow_research_use=parsed.allow_research_use,
+        allow_ai_training=parsed.allow_ai_training,
+        allow_commercial_use=parsed.allow_commercial_use,
         notes=parsed.notes,
     )
     db.add(media)
     await db.flush()
 
-    try:
-        await search_index.index_document("media", {
-            "id": str(media.id),
-            "title": media.title,
-            "speaker": media.speaker or "",
-            "dialect": media.dialect or "",
-            "genre": media.genre or "",
-        })
-    except Exception as exc:
-        # Search is a secondary index; do not turn a successful archive write into a failed upload.
-        logger.warning("media.search_index_failed", media_id=str(media.id), error=str(exc))
+    # Pending media must not be placed in the public search index before review.
 
-    return _build_media_detail(media)
+    return MediaSubmissionDetail(**_build_media_detail(media).model_dump(), review_status="pending")
 
 
 @router.delete("/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
