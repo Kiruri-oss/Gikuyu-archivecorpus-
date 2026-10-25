@@ -31,7 +31,23 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
-
+      - name: Smoke-test deployed API routes locally
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/gikuyu-next.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health > /tmp/gikuyu-health.json; then
+              break
+            fi
+            sleep 2
+          done
+          node -e 'const fs=require("fs"); const h=JSON.parse(fs.readFileSync("/tmp/gikuyu-health.json","utf8")); if(h.status!=="ok" || h.service!=="gikuyu-archive-web") { console.error(h); process.exit(1); }'
+          invalid_status=$(curl --silent --output /tmp/gikuyu-invalid.json --write-out "%{http_code}" "http://127.0.0.1:3000/api/v1/search?q=x")
+          test "$invalid_status" = "400"
+          valid_status=$(curl --silent --output /tmp/gikuyu-search.json --write-out "%{http_code}" --max-time 20 "http://127.0.0.1:3000/api/v1/search?q=Gikuyu")
+          test "$valid_status" = "200"
+          node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-search.json","utf8")); if(!Array.isArray(d.media) || d.media.length===0) { console.error(d); process.exit(1); }'
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
@@ -53,7 +69,7 @@ jobs:
         env:
           SECRET_KEY: ci-test-secret-key-that-is-long-enough
           DATABASE_URL: postgresql+asyncpg://gikuyu:gikuyu@localhost:5432/gikuyu_archive
-          REDIS_URL: redis://localhost:6379/0
+          REDIS_URL: redis://redis:6379/0
           S3_ENDPOINT: http://localhost:9000
           S3_ACCESS_KEY: test
           S3_SECRET_KEY: test
