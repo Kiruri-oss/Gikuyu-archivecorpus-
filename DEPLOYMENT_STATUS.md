@@ -6,6 +6,10 @@ Last reviewed: 25 October 2026
 
 Build the largest practical Gĩkũyũ language library and grow the underlying platform into a major African language library. The long-term product includes persistent language profiles, texts, oral recordings, transcripts, translations, annotations, reviewer workflows and permissioned datasets for language research and AI.
 
+## Product direction
+
+The primary product is a Gĩkũyũ archive corpus. The African-language directory is secondary and intended for later expansion; it must not replace the corpus, contributor, transcription, annotation and research workflows.
+
 ## Current web release
 
 The latest code adds an initial directory of 20 African language profiles and language-aware public-reference search. It searches the selected language's Wikipedia and English Wikipedia; the Kikuyu search also checks Kikuyu Wiktionary. Search results remain third-party references and are not records stored by this project. Coverage varies by source and language.
@@ -23,6 +27,10 @@ Other web features include device-local saved references, source detail pages, A
 
 The Python FastAPI backend contains groundwork for authentication, media upload, transcript segments, reviewer verification and exports but is not connected to Vercel. It expects database, Redis, S3-compatible storage, Meilisearch and secret configuration. Do not claim community contributions are being stored by the current live site.
 
+## Hunter code added, not yet live
+
+The backend hunter now checks robots.txt, rejects obvious private/local URL targets, requires an identifiable supported open licence before extracting page content, and saves eligible Gĩkũyũ candidates as pending source/text records. Unlicensed pages may be traversed for links only; their text is not stored. AI-training and commercial-use permissions default to false. This code is in the repository, but the FastAPI service is not deployed or verified in production.
+
 ## Rights and data governance
 
 Public-source discovery does not grant redistribution or AI-training rights. Each record in the future corpus should carry source provenance, licence, consent/use permissions, language/dialect metadata and review state. Sensitive community knowledge requires an access policy; user data must be deletable; commercial or AI-training use must be explicit in contributor terms.
@@ -36,6 +44,6 @@ Public-source discovery does not grant redistribution or AI-training rights. Eac
 
 ## Verification
 
-Previously, the project passed backend unit tests, frontend typecheck/lint/build and local production-mode API smoke tests. That earlier run predates the latest multilingual directory changes. The Vercel deployments for the new commits were still queued/pending at the time of this update, so the new multilingual release must not be considered verified until the latest build and CI results are checked.
+Previously, the project passed backend unit tests, frontend typecheck/lint/build and local production-mode API smoke tests. That earlier run predates the latest multilingual directory changes. Recent Vercel status checks report a build-rate-limit restriction. The newest source commits are not confirmed deployed. The latest backend tests and frontend checks must be verified against these exact commits before claiming a clean release.
 
 Direct public-site HTTP testing is restricted from the current environment. A successful deployment build alone does not verify every live route or external Wikimedia endpoint.
