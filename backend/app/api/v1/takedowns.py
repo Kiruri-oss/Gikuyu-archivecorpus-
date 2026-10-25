@@ -59,6 +59,9 @@ async def action_takedown(
         # Mark it unavailable first. The request-scoped DB transaction commits only
         # after this handler returns successfully.
         source.status = SourceStatus.TAKEN_DOWN
+        # Commit the visibility block before external storage/index cleanup. If a
+        # storage provider fails, the source stays hidden and the admin can retry.
+        await db.commit()
 
         text_result = await db.execute(select(TextRecord).where(TextRecord.source_id == source.id))
         for record in text_result.scalars().all():
