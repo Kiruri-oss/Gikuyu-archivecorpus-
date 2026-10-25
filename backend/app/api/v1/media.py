@@ -114,9 +114,7 @@ async def upload_media(
         # Search is a secondary index; do not turn a successful archive write into a failed upload.
         logger.warning("media.search_index_failed", media_id=str(media.id), error=str(exc))
 
-    detail = MediaDetail.model_validate(media)
-    detail.file_url = storage_service.presigned_url(settings.S3_BUCKET_AUDIO, media.file_key)
-    return detail
+    return _build_media_detail(media)
 
 
 @router.delete("/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
