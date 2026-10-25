@@ -126,3 +126,37 @@ async def action_takedown(takedown_id: uuid.UUID, db: DbSession, _: AdminUser) -
 
     await db.flush()
     return TakedownRead.model_validate(takedown)
+
+
+@router.post("/{takedown_id}/reject", response_model=TakedownRead)
+async def reject_takedown(takedown_id: uuid.UUID, db: DbSession, _: AdminUser) -> TakedownRead:
+    """Reject a request after review and restore a source hidden solely for this request."""
+    takedown = await db.get(Takedown, takedown_id)
+    if not takedown:
+        raise HTTPException(status_code=404, detail="Takedown not found")
+    if takedown.status == TakedownStatus.ACTIONED:
+        raise HTTPException(status_code=409, detail="An actioned removal cannot be rejected; restore the source through a separate review.")
+
+    source_result = await db.execute(select(Source).where(Source.url == takedown.url))
+    source = source_result.scalar_one_or_none()
+    if (
+        source
+        and source.status == SourceStatus.PENDING
+        and source.reviewer_notes == f"Temporarily hidden while takedown request {takedown.id} is reviewed."
+    ):
+        other_requests = await db.execute(
+            select(Takedown.id).where(
+                Takedown.url == takedown.url,
+                Takedown.id != takedown.id,
+                Takedown.status.in_([TakedownStatus.RECEIVED, TakedownStatus.UNDER_REVIEW]),
+            )
+        )
+        if other_requests.first() is None:
+            source.status = SourceStatus.APPROVED
+            source.reviewer_notes = "Takedown request rejected after review; source restored."
+
+    takedown.status = TakedownStatus.REJECTED
+    takedown.actioned_at = datetime.now(timezone.utc)
+    takedown.admin_notes = "Request rejected after administrator review."
+    await db.flush()
+    return TakedownRead.model_validate(takedown)
