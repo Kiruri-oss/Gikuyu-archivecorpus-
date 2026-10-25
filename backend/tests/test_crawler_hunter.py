@@ -89,3 +89,47 @@ async def test_crawler_does_not_apply_host_delay_across_different_origins(monkey
     started = time.monotonic()
     await crawler._respect_host_delay("https://two.example/second")
     assert time.monotonic() - started < 0.04
+
+
+def test_pdf_text_extraction_produces_crawlable_gikuyu_document(monkeypatch):
+    from types import SimpleNamespace
+
+    from bs4 import BeautifulSoup
+
+    from app.crawlers.base import BaseCrawler
+
+    class FakePage:
+        def extract_text(self):
+            return "Gĩkũyũ: Nĩ mũndũ ũcio. Mũciĩ na andũ."
+
+    class FakeReader:
+        def __init__(self, _stream, strict=False):
+            self.is_encrypted = False
+            self.pages = [FakePage()]
+            self.metadata = SimpleNamespace(title="Gĩkũyũ oral tradition")
+
+    monkeypatch.setattr("app.crawlers.base.PdfReader", FakeReader)
+    document = BaseCrawler._pdf_to_html(b"%PDF test fixture", "https://example.org/story.pdf")
+
+    assert document is not None
+    parsed = BeautifulSoup(document, "lxml")
+    assert parsed.title is not None
+    assert parsed.title.get_text() == "Gĩkũyũ oral tradition"
+    assert "Nĩ mũndũ ũcio" in parsed.get_text()
+    assert "mũciĩ" in parsed.get_text()
+
+
+def test_pdf_extraction_skips_encrypted_files_without_an_empty_password(monkeypatch):
+    from app.crawlers.base import BaseCrawler
+
+    class FakeReader:
+        def __init__(self, _stream, strict=False):
+            self.is_encrypted = True
+            self.pages = []
+            self.metadata = None
+
+        def decrypt(self, _password):
+            return 0
+
+    monkeypatch.setattr("app.crawlers.base.PdfReader", FakeReader)
+    assert BaseCrawler._pdf_to_html(b"%PDF encrypted fixture", "https://example.org/locked.pdf") is None
