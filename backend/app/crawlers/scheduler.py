@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -22,6 +23,8 @@ class CrawlScheduler:
     def __init__(self) -> None:
         self.scheduler = AsyncIOScheduler()
         self.web = WebCrawler()
+        self.last_run: dict[str, object] = {"status": "never_run"}
+        self._run_lock = asyncio.Lock()
 
     async def _archive_candidates(self, candidates: list[dict]) -> int:
         saved = 0
@@ -112,14 +115,36 @@ class CrawlScheduler:
         logger.info("scheduler.archive_index_summary", saved=saved, indexed=indexed)
         return saved
 
-    async def run_web_crawl(self) -> None:
-        results = await self.web.crawl(SEED_URLS, max_pages=500)
-        try:
-            saved = await self._archive_candidates(results)
-            logger.info("scheduler.web_crawl_complete", found=len(results), saved=saved, status="notice_and_takedown")
-        except Exception as exc:
-            logger.error("scheduler.archive_candidates_failed", found=len(results), error=str(exc))
-            raise
+    async def run_web_crawl(self, max_pages: int = 500) -> dict[str, object]:
+        if self._run_lock.locked():
+            raise RuntimeError("A hunter run is already in progress.")
+        async with self._run_lock:
+            started_at = datetime.now(timezone.utc).isoformat()
+            page_budget = max(1, min(max_pages, 1000))
+            self.last_run = {"status": "running", "started_at": started_at, "page_budget": page_budget}
+            try:
+                results = await self.web.crawl(SEED_URLS, max_pages=page_budget)
+                saved = await self._archive_candidates(results)
+                self.last_run = {
+                    "status": "completed",
+                    "started_at": started_at,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "pages_discovered": len(results),
+                    "records_saved": saved,
+                    "page_budget": page_budget,
+                }
+                logger.info("scheduler.web_crawl_complete", **self.last_run, collection_model="notice_and_takedown")
+                return self.last_run
+            except Exception as exc:
+                self.last_run = {
+                    "status": "failed",
+                    "started_at": started_at,
+                    "failed_at": datetime.now(timezone.utc).isoformat(),
+                    "page_budget": page_budget,
+                    "error": str(exc)[:1000],
+                }
+                logger.error("scheduler.archive_candidates_failed", error=str(exc), **self.last_run)
+                raise
 
     def start(self) -> None:
         if not self.scheduler.running:
