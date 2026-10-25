@@ -32,7 +32,24 @@ class Settings(BaseSettings):
     BACKEND_URL: AnyHttpUrl = "http://localhost:8000"
 
     CRAWLER_USER_AGENT: str = "GikuyuArchiveBot/1.0 (+https://gikuyu-archivecorpus.vercel.app/about)"
-    CRAWLER_SEED_URLS: str = "https://ki.wikipedia.org/wiki/Main_Page,https://ki.wiktionary.org/wiki/Main_Page,https://www.wikidata.org/wiki/Wikidata:Main_Page,https://opendata.go.ke/,https://archive.org/"
+    CRAWLER_SEED_URLS: str = (
+        "https://ki.wikipedia.org/wiki/Main_Page,"
+        "https://ki.wiktionary.org/wiki/Main_Page,"
+        "https://www.wikidata.org/wiki/Wikidata:Main_Page,"
+        "https://opendata.go.ke/,"
+        "https://archive.org/,"
+        "https://openalex.org/,"
+        "https://zenodo.org/,"
+        "https://huggingface.co/datasets,"
+        "https://github.com/topics/kikuyu-language,"
+        "https://www.google.com/books/,"
+        "https://www.loc.gov/,"
+        "https://www.europeana.eu/,"
+        "https://www.gutenberg.org/,"
+        "https://www.africanstorybook.org/,"
+        "https://www.maseno.ac.ke/,"
+        "https://www.ajol.info/"
+    )
     CRAWLER_RESPECT_ROBOTS: bool = True
     CRAWLER_MAX_CONCURRENCY: int = 5
 
