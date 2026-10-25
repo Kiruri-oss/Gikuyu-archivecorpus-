@@ -85,7 +85,7 @@ class CrawlScheduler:
         return saved
 
     async def run_web_crawl(self) -> None:
-        results = await self.web.crawl(SEED_URLS, max_pages=50)
+        results = await self.web.crawl(SEED_URLS, max_pages=500)
         try:
             saved = await self._archive_candidates(results)
             logger.info("scheduler.web_crawl_complete", found=len(results), saved=saved, status="pending_review")
@@ -95,9 +95,9 @@ class CrawlScheduler:
 
     def start(self) -> None:
         if not self.scheduler.running:
-            self.scheduler.add_job(self.run_web_crawl, "interval", hours=12, id="web_crawl", replace_existing=True)
+            self.scheduler.add_job(self.run_web_crawl, "interval", hours=6, id="web_crawl", replace_existing=True)
             self.scheduler.start()
-            logger.info("scheduler.started")
+            logger.info("scheduler.started", seed_count=len(SEED_URLS), max_pages=500, interval_hours=6)
 
     def stop(self) -> None:
         if self.scheduler.running:
