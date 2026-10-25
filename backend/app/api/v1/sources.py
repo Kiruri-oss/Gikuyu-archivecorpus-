@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, timezone
-import json
 from urllib.parse import urlparse
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
@@ -71,9 +70,9 @@ async def review_source(
     source.reviewed_at = datetime.now(timezone.utc)
     source.reviewer_notes = payload.reviewer_notes
     await db.flush()
-    if source.status == SourceStatus.APPROVED:
-        for record in text_records:
-            try:
+    for record in text_records:
+        try:
+            if source.status == SourceStatus.APPROVED:
                 await search_index.index_document("texts", {
                     "id": str(record.id),
                     "title": record.title,
@@ -85,8 +84,11 @@ async def review_source(
                     "allow_ai_training": record.allow_ai_training,
                     "allow_commercial_use": record.allow_commercial_use,
                 })
-            except Exception as exc:
-                logger.warning("text.search_index_failed", text_record_id=str(record.id), error=str(exc))
+            else:
+                await search_index.delete_document("texts", str(record.id))
+        except Exception as exc:
+            # Database visibility is authoritative; keep moderation decisions even if the optional index is offline.
+            logger.warning("text.search_index_update_failed", text_record_id=str(record.id), error=str(exc))
     return SourceRead.model_validate(source)
 
 
