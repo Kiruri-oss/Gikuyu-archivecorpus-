@@ -41,7 +41,7 @@ class CrawlScheduler:
                     duplicates += 1
                     continue
 
-                body = item["text"].replace("\\r\\n", "\\n").strip()
+                body = item["text"].replace("\r\n", "\n").strip()
                 digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
                 body_exists = await db.execute(select(TextRecord.id).where(TextRecord.sha256 == digest))
                 if body_exists.scalar_one_or_none():
