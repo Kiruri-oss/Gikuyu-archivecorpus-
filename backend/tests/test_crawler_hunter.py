@@ -4,7 +4,7 @@ from app.crawlers.web import WebCrawler
 
 
 @pytest.mark.asyncio
-async def test_crawler_discovers_through_unlicensed_index_and_archives_gikuyu_candidates(monkeypatch):
+async def test_crawler_discovers_gikuyu_and_only_keeps_body_for_explicit_reusable_licences(monkeypatch):
     pages = {
         "https://example.org/": """
             <html><head><title>Index</title></head><body>
@@ -36,8 +36,12 @@ async def test_crawler_discovers_through_unlicensed_index_and_archives_gikuyu_ca
     by_url = {item["url"]: item for item in results}
     assert by_url["https://example.org/"]["license"] == "UNKNOWN — licence not stated"
     assert by_url["https://example.org/"]["permits_ai_training"] is False
+    assert by_url["https://example.org/"]["text"] is None
+    assert by_url["https://example.org/"]["collection_mode"] == "metadata_and_source_link_only"
     assert by_url["https://example.org/licensed"]["license"] == "CC-BY"
     assert by_url["https://example.org/licensed"]["permits_ai_training"] is True
+    assert by_url["https://example.org/licensed"]["text"]
+    assert by_url["https://example.org/licensed"]["collection_mode"] == "full_text"
 
 
 @pytest.mark.asyncio
@@ -63,3 +67,4 @@ async def test_crawler_archives_cc_by_sa_candidate_but_does_not_grant_reuse(monk
     assert results[0]["permits_research"] is False
     assert results[0]["permits_ai_training"] is False
     assert results[0]["permits_commercial_use"] is False
+    assert results[0]["text"] is None
