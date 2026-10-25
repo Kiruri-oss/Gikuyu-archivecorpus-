@@ -16,15 +16,11 @@ export default function ResearcherPage() {
 
   async function download() {
     setError("");
-    if (!process.env.NEXT_PUBLIC_API_URL) {
-      setError("Research exports are not connected to a persistent archive backend in this deployment. No file was downloaded.");
-      return;
-    }
     setDownloading(true);
     try {
       const query = new URLSearchParams({ purpose, license_filter: license });
       if (dialect.trim()) query.set("dialect", dialect.trim());
-      const base = process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
+      const base = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
       const token = localStorage.getItem("access_token");
       const response = await fetch(`${base}/api/v1/exports/${format}?${query.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -55,7 +51,7 @@ export default function ResearcherPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-7 py-8 sm:py-12">
       <header className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-earth-700">Researcher workspace</p><h1 className="text-3xl font-bold text-earth-900 sm:text-4xl">Export the Gĩkũyũ corpus</h1><p className="leading-7 text-gray-600">Download source-traceable archive records in CSV or JSONL. Each export is filtered by both your intended use and the stored permissions on each record. Records with unknown rights are excluded from reuse datasets.</p></header>
-      {error && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">{error}<p className="mt-2"><Link href="/login" className="font-semibold underline underline-offset-4">Sign in</Link> with a researcher account if needed.</p></div>}
+      {error && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">{error}<p className="mt-2"><Link href="/auth/login" className="font-semibold underline underline-offset-4">Sign in</Link> with a researcher account if needed.</p></div>}
       <section className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="space-y-2"><label htmlFor="format" className="block text-sm font-semibold text-gray-800">File format</label><select id="format" value={format} onChange={(event) => setFormat(event.target.value as ExportFormat)} className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900"><option value="csv">CSV — spreadsheets and analysis</option><option value="jsonl">JSONL — corpus pipelines</option></select></div>
         <div className="space-y-2"><label htmlFor="purpose" className="block text-sm font-semibold text-gray-800">Intended use</label><select id="purpose" value={purpose} onChange={(event) => setPurpose(event.target.value as ExportPurpose)} className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900"><option value="research">Research</option><option value="ai_training">AI training</option><option value="commercial">Commercial use</option></select></div>
