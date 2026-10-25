@@ -37,3 +37,14 @@ export interface Segment {
   is_verified: boolean;
   confidence: number | null;
 }
+
+export type TakedownStatus = "received" | "under_review" | "actioned" | "rejected";
+
+export interface Takedown {
+  id: string;
+  url: string;
+  requester_name: string;
+  status: TakedownStatus;
+  created_at: string;
+  actioned_at: string | null;
+}
