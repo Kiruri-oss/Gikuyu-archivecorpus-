@@ -92,6 +92,8 @@ def is_safe_http_url(url: str) -> bool:
         host = (parsed.hostname or "").lower().rstrip(".")
         if parsed.scheme not in {"http", "https"} or not host or parsed.username or parsed.password:
             return False
+        if parsed.port is not None and parsed.port != (80 if parsed.scheme == "http" else 443):
+            return False
         if host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
             return False
         try:
