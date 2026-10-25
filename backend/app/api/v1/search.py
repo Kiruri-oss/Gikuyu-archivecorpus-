@@ -18,34 +18,32 @@ def _like_pattern(query: str) -> str:
 @router.get("")
 async def search(
     db: DbSession,
-    q: str = Query(min_length=2, max_length=200),
+    q: str | None = Query(default=None, max_length=200),
     limit: int = Query(default=20, ge=1, le=50),
 ) -> dict:
     """Search approved public corpus records directly in PostgreSQL.
 
-    PostgreSQL is the source of truth and search path for this endpoint, so the
-    archive does not require a separate Meilisearch service to operate. Optional
-    Meilisearch indexing remains available for other clients and future scale-out.
+    With no query, return recent approved public records for archive browsing.
+    PostgreSQL is the source of truth, so a separate Meilisearch service is optional.
     """
-    query = q.strip()
-    if len(query) < 2:
+    query = (q or "").strip()
+    if query and len(query) < 2:
         raise HTTPException(status_code=400, detail="Enter at least two non-space characters.")
-    pattern = _like_pattern(query)
+    pattern = _like_pattern(query) if query else None
 
+    media_filters = [Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True)]
+    if pattern:
+        media_filters.append(or_(
+            Media.title.ilike(pattern, escape="\\"),
+            Media.speaker.ilike(pattern, escape="\\"),
+            Media.dialect.ilike(pattern, escape="\\"),
+            Media.county.ilike(pattern, escape="\\"),
+            Media.genre.ilike(pattern, escape="\\"),
+        ))
     media_stmt = (
         select(Media, Source)
         .join(Source, Media.source_id == Source.id)
-        .where(
-            Source.status == SourceStatus.APPROVED,
-            Media.allow_public_display.is_(True),
-            or_(
-                Media.title.ilike(pattern, escape="\\"),
-                Media.speaker.ilike(pattern, escape="\\"),
-                Media.dialect.ilike(pattern, escape="\\"),
-                Media.county.ilike(pattern, escape="\\"),
-                Media.genre.ilike(pattern, escape="\\"),
-            ),
-        )
+        .where(*media_filters)
         .order_by(Media.created_at.desc())
         .limit(limit)
     )
@@ -70,18 +68,17 @@ async def search(
             "allow_commercial_use": media.allow_commercial_use,
         })
 
+    segment_filters = [Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True)]
+    if pattern:
+        segment_filters.append(or_(
+            Segment.transcript.ilike(pattern, escape="\\"),
+            Segment.translation.ilike(pattern, escape="\\"),
+        ))
     segment_stmt = (
         select(Segment, Media, Source)
         .join(Media, Segment.media_id == Media.id)
         .join(Source, Media.source_id == Source.id)
-        .where(
-            Source.status == SourceStatus.APPROVED,
-            Media.allow_public_display.is_(True),
-            or_(
-                Segment.transcript.ilike(pattern, escape="\\"),
-                Segment.translation.ilike(pattern, escape="\\"),
-            ),
-        )
+        .where(*segment_filters)
         .order_by(Segment.start_seconds)
         .limit(limit)
     )
@@ -104,20 +101,19 @@ async def search(
             "license": media.license,
         })
 
+    text_filters = [Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True)]
+    if pattern:
+        text_filters.append(or_(
+            TextRecord.title.ilike(pattern, escape="\\"),
+            TextRecord.body.ilike(pattern, escape="\\"),
+            TextRecord.author.ilike(pattern, escape="\\"),
+            TextRecord.dialect.ilike(pattern, escape="\\"),
+            TextRecord.genre.ilike(pattern, escape="\\"),
+        ))
     text_stmt = (
         select(TextRecord, Source)
         .join(Source, TextRecord.source_id == Source.id)
-        .where(
-            Source.status == SourceStatus.APPROVED,
-            TextRecord.allow_public_display.is_(True),
-            or_(
-                TextRecord.title.ilike(pattern, escape="\\"),
-                TextRecord.body.ilike(pattern, escape="\\"),
-                TextRecord.author.ilike(pattern, escape="\\"),
-                TextRecord.dialect.ilike(pattern, escape="\\"),
-                TextRecord.genre.ilike(pattern, escape="\\"),
-            ),
-        )
+        .where(*text_filters)
         .order_by(TextRecord.created_at.desc())
         .limit(limit)
     )
@@ -141,4 +137,4 @@ async def search(
             "allow_commercial_use": record.allow_commercial_use,
         })
 
-    return {"query": query, "media": media_hits, "segments": segment_hits, "texts": text_hits}
+    return {"query": query, "source": "archive_corpus", "media": media_hits, "segments": segment_hits, "texts": text_hits}
