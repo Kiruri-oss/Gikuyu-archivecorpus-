@@ -7,8 +7,10 @@ from app.models.segment import Segment
 from app.models.media import Media
 from app.schemas.segment import SegmentCreate, SegmentRead, SegmentUpdate
 from app.services.indexing import search_index
+from app.core.logging import get_logger
 
 router = APIRouter(prefix="/segments", tags=["segments"])
+logger = get_logger(__name__)
 
 
 @router.get("/media/{media_id}", response_model=list[SegmentRead])
@@ -39,13 +41,17 @@ async def create_segment(payload: SegmentCreate, db: DbSession, user: CurrentUse
     await db.flush()
 
     if segment.transcript:
-        await search_index.index_document("segments", {
-            "id": str(segment.id),
-            "media_id": str(media.id),
-            "transcript": segment.transcript,
-            "translation": segment.translation or "",
-            "dialect": media.dialect or "",
-        })
+        try:
+            await search_index.index_document("segments", {
+                "id": str(segment.id),
+                "media_id": str(media.id),
+                "transcript": segment.transcript,
+                "translation": segment.translation or "",
+                "dialect": media.dialect or "",
+            })
+        except Exception as exc:
+            # Keep the transcript record even if the optional search index is offline.
+            logger.warning("segment.search_index_failed", segment_id=str(segment.id), error=str(exc))
     return SegmentRead.model_validate(segment)
 
 

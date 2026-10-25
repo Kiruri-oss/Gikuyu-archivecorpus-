@@ -2,13 +2,13 @@ import io
 import json
 import uuid
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 
 @pytest.mark.asyncio
 async def test_upload_media_creates_record(client, db_session, auth_headers):
     with patch("app.api.v1.media.storage_service.upload", return_value="test/key") as mock_upload, \
-         patch("app.api.v1.media.search_index.index_document") as mock_index:
+         patch("app.api.v1.media.search_index.index_document", new_callable=AsyncMock) as mock_index:
         payload = json.dumps({"title": "Ngano ya Njũkĩ", "speaker": "Wanjiku", "dialect": "Ki-Muranga"})
         files = {"file": ("clip.webm", io.BytesIO(b"fake-audio-bytes"), "audio/webm")}
         resp = await client.post(

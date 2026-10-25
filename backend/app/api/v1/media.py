@@ -11,9 +11,11 @@ from app.services.language_detector import language_detector
 from app.services.dedup import dedup_service
 from app.services.indexing import search_index
 from app.core.config import get_settings
+from app.core.logging import get_logger
 
 router = APIRouter(prefix="/media", tags=["media"])
 settings = get_settings()
+logger = get_logger(__name__)
 
 
 @router.get("", response_model=list[MediaRead])
@@ -93,13 +95,17 @@ async def upload_media(
     db.add(media)
     await db.flush()
 
-    await search_index.index_document("media", {
-        "id": str(media.id),
-        "title": media.title,
-        "speaker": media.speaker or "",
-        "dialect": media.dialect or "",
-        "genre": media.genre or "",
-    })
+    try:
+        await search_index.index_document("media", {
+            "id": str(media.id),
+            "title": media.title,
+            "speaker": media.speaker or "",
+            "dialect": media.dialect or "",
+            "genre": media.genre or "",
+        })
+    except Exception as exc:
+        # Search is a secondary index; do not turn a successful archive write into a failed upload.
+        logger.warning("media.search_index_failed", media_id=str(media.id), error=str(exc))
 
     detail = MediaDetail.model_validate(media)
     detail.file_url = storage_service.presigned_url(settings.S3_BUCKET_AUDIO, media.file_key)
@@ -112,5 +118,8 @@ async def delete_media(media_id: uuid.UUID, db: DbSession, _: ReviewerUser) -> N
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
     storage_service.delete(settings.S3_BUCKET_AUDIO, media.file_key)
-    await search_index.delete_document("media", str(media.id))
+    try:
+        await search_index.delete_document("media", str(media.id))
+    except Exception as exc:
+        logger.warning("media.search_index_delete_failed", media_id=str(media.id), error=str(exc))
     await db.delete(media)

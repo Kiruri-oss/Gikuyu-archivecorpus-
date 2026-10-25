@@ -36,7 +36,7 @@ class LanguageDetector:
 
         # Fast path: Kikuyu-specific digraph/trigraph signals
         kik_hits = sum(sample.count(m) for m in self.KIKUYU_MARKERS)
-        sw_hits = sum(sample.count(m) for m in self.SWAHLI_MARKERS)
+        sw_hits = sum(sample.count(m) for m in self.SWAHILI_MARKERS)
         en_hits = sum(sample.count(m) for m in self.ENGLISH_MARKERS)
         total = kik_hits + sw_hits + en_hits + 1
 
