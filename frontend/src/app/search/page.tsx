@@ -138,15 +138,23 @@ export default function SearchPage() {
             if (!cancelled) setResults([...texts.map(normaliseText), ...media.map(normaliseMedia)]);
           }
         } else {
-          const data = query.trim()
-            ? await api.get<{ media: Media[] }>(`/api/v1/search?q=${encodeURIComponent(query.trim())}`)
+          const data: CorpusSearchResponse = query.trim()
+            ? await api.get<CorpusSearchResponse>(`/api/v1/search?q=${encodeURIComponent(query.trim())}`)
             : { media: await api.get<Media[]>("/api/v1/media?limit=30") };
           if (!cancelled) {
-            setResults(data.media.map((item) => ({
-              ...item,
-              resultType: "reference",
-              targetHref: `/media/${encodeURIComponent(item.id)}`,
-            })));
+            if (query.trim() && (data.texts !== undefined || data.segments !== undefined)) {
+              setResults([
+                ...(data.texts ?? []).map(normaliseText),
+                ...(data.media ?? []).map(normaliseMedia),
+                ...(data.segments ?? []).map(normaliseSegment),
+              ]);
+            } else {
+              setResults((data.media ?? []).map((item) => ({
+                ...item as Media,
+                resultType: "reference",
+                targetHref: `/media/${encodeURIComponent(item.id)}`,
+              })));
+            }
           }
         }
       } catch (err) {
