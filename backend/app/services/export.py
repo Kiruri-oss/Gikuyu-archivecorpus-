@@ -99,6 +99,7 @@ class ExportService:
             .join(Source, TextRecord.source_id == Source.id)
             .where(
                 Source.status == SourceStatus.APPROVED,
+                TextRecord.language_code == "ki",
                 TextRecord.allow_public_display.is_(True),
                 _permission_filter(TextRecord, purpose),
             )
@@ -175,6 +176,7 @@ class ExportService:
             .join(Source, TextRecord.source_id == Source.id)
             .where(
                 Source.status == SourceStatus.APPROVED,
+                TextRecord.language_code == "ki",
                 TextRecord.allow_public_display.is_(True),
                 _permission_filter(TextRecord, purpose),
             )
