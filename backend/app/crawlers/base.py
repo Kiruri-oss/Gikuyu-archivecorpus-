@@ -3,12 +3,14 @@ import html as html_lib
 import io
 import socket
 import time
+import zipfile
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 from ipaddress import ip_address
 
 import httpx
+import trafilatura
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
@@ -21,6 +23,8 @@ logger = get_logger(__name__)
 settings = get_settings()
 MAX_PAGE_BYTES = 25 * 1024 * 1024
 MAX_PDF_PAGES = 500
+MAX_EPUB_ENTRIES = 300
+MAX_EPUB_TEXT_BYTES = 10 * 1024 * 1024
 MAX_EXTRACTED_TEXT_CHARS = 250000
 MAX_REDIRECTS = 5
 
@@ -190,6 +194,62 @@ class BaseCrawler:
             logger.warning("crawler.pdf_parse_failed", url=source_url, error=str(exc))
             return None
 
+    @staticmethod
+    def _epub_to_html(payload: bytes, source_url: str) -> str | None:
+        """Read bounded XHTML from an EPUB without extracting archive files to disk."""
+        try:
+            with zipfile.ZipFile(io.BytesIO(payload)) as book:
+                entries = book.infolist()
+                if len(entries) > MAX_EPUB_ENTRIES:
+                    logger.info("crawler.epub_entry_limit_exceeded", url=source_url, entries=len(entries))
+                    entries = entries[:MAX_EPUB_ENTRIES]
+
+                extracted_bytes = 0
+                chapters: list[str] = []
+                title = ""
+                for entry in entries:
+                    path = entry.filename.lower()
+                    if not path.endswith((".xhtml", ".html", ".htm")):
+                        continue
+                    if entry.flag_bits & 0x1 or entry.file_size > MAX_PAGE_BYTES:
+                        continue
+                    if entry.compress_size > 0 and entry.file_size / entry.compress_size > 200:
+                        logger.info("crawler.epub_compression_ratio_rejected", url=source_url, member=entry.filename)
+                        continue
+                    if extracted_bytes + entry.file_size > MAX_EPUB_TEXT_BYTES:
+                        break
+
+                    raw = book.read(entry)
+                    extracted_bytes += len(raw)
+                    # EPUB XHTML is UTF-8 by default; pass decoded text so
+                    # BeautifulSoup does not guess a legacy encoding and corrupt ĩ/ũ.
+                    decoded = raw.decode("utf-8-sig", errors="replace")
+                    soup = BeautifulSoup(decoded, "lxml")
+                    if not title and soup.title:
+                        title = soup.title.get_text(" ", strip=True)
+                    for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form"]):
+                        tag.decompose()
+                    chapter = soup.get_text(separator=" ", strip=True)
+                    if chapter:
+                        chapters.append(chapter)
+
+                text = "\\n\\n".join(chapters)[:MAX_EXTRACTED_TEXT_CHARS]
+                if not text.strip():
+                    logger.info("crawler.epub_has_no_extractable_text", url=source_url)
+                    return None
+                if not title:
+                    title = urlparse(source_url).path.rsplit("/", 1)[-1] or "EPUB book"
+                return (
+                    "<html><head><title>"
+                    + html_lib.escape(title)
+                    + "</title></head><body><pre>"
+                    + html_lib.escape(text)
+                    + "</pre></body></html>"
+                )
+        except (OSError, ValueError, zipfile.BadZipFile, RuntimeError) as exc:
+            logger.warning("crawler.epub_parse_failed", url=source_url, error=str(exc))
+            return None
+
     async def fetch(self, url: str) -> tuple[str, str] | None:
         current_url = canonicalize_url(url) if is_safe_http_url(url) else url
         if not is_safe_http_url(current_url):
@@ -197,7 +257,6 @@ class BaseCrawler:
             return None
 
         async with self.semaphore:
-            original_host = urlparse(current_url).hostname
             for _ in range(MAX_REDIRECTS + 1):
                 if not is_safe_http_url(current_url) or not await self.can_fetch(current_url):
                     return None
@@ -210,20 +269,18 @@ class BaseCrawler:
                                 if not location:
                                     return None
                                 target = canonicalize_url(urljoin(current_url, location))
-                                if urlparse(target).hostname != original_host:
-                                    logger.warning("crawler.cross_host_redirect_blocked", source=current_url, target=target)
-                                    return None
+                                # Revalidate the new host, public DNS target and its robots.txt
+                                # on the next loop. Archive/CDN redirects are common for books.
                                 current_url = target
                                 continue
                             if response.status_code >= 400:
                                 logger.warning("crawler.http_error", url=current_url, status=response.status_code)
                                 return None
                             content_type = response.headers.get("content-type", "").lower()
-                            is_pdf = (
-                                "application/pdf" in content_type
-                                or urlparse(current_url).path.lower().endswith(".pdf")
-                            )
-                            if not is_pdf and content_type and not any(
+                            path = urlparse(current_url).path.lower()
+                            is_pdf = "application/pdf" in content_type or path.endswith(".pdf")
+                            is_epub = "application/epub+zip" in content_type or path.endswith(".epub")
+                            if not (is_pdf or is_epub) and content_type and not any(
                                 kind in content_type
                                 for kind in ("text/html", "application/xhtml+xml")
                             ):
@@ -249,6 +306,13 @@ class BaseCrawler:
                                 if document_html is None:
                                     return None
                                 return document_html, current_url
+                            if is_epub:
+                                document_html = await asyncio.to_thread(
+                                    self._epub_to_html, payload, current_url
+                                )
+                                if document_html is None:
+                                    return None
+                                return document_html, current_url
                             encoding = response.encoding or "utf-8"
                             html = payload.decode(encoding, errors="replace")
                             return html, current_url
@@ -265,7 +329,21 @@ class BaseCrawler:
             tag.decompose()
 
         title = (soup.title.string or "").strip() if soup.title else ""
-        body = soup.get_text(separator=" ", strip=True)
+        body = ""
+        try:
+            extracted = trafilatura.extract(
+                html,
+                include_comments=False,
+                include_tables=True,
+                include_links=False,
+                favor_precision=False,
+            )
+            if extracted:
+                body = extracted.strip()
+        except Exception as exc:
+            logger.debug("crawler.main_text_extraction_fallback", url=base_url, error=str(exc))
+        if len(body) < 100:
+            body = soup.get_text(separator=" ", strip=True)
         if len(body) < 100:
             return None
 

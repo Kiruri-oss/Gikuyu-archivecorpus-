@@ -2,14 +2,17 @@ import asyncio
 import hashlib
 import json
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
+from redis.asyncio import Redis
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.crawlers.web import WebCrawler
+from app.crawlers.youtube import YouTubeCrawler
 from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
 from app.services.indexing import search_index
@@ -17,14 +20,65 @@ from app.services.indexing import search_index
 logger = get_logger(__name__)
 settings = get_settings()
 SEED_URLS = [item.strip() for item in settings.CRAWLER_SEED_URLS.split(",") if item.strip()]
+FRONTIER_KEY = "gikuyu:hunter:frontier:v1"
+VISITED_KEY = "gikuyu:hunter:visited:v1"
+VISITED_TTL_SECONDS = 30 * 24 * 60 * 60
 
 
 class CrawlScheduler:
     def __init__(self) -> None:
         self.scheduler = AsyncIOScheduler()
         self.web = WebCrawler()
+        self.youtube = YouTubeCrawler()
+        self.redis = Redis.from_url(str(settings.REDIS_URL), decode_responses=True)
+        self._memory_frontier: list[str] = []
+        self._memory_visited: set[str] = set()
         self.last_run: dict[str, object] = {"status": "never_run"}
         self._run_lock = asyncio.Lock()
+
+    async def _load_crawl_state(self) -> tuple[set[str], list[str], bool]:
+        """Load a durable crawl frontier; retain a process-local fallback if Redis is unavailable."""
+        try:
+            frontier = await self.redis.lrange(FRONTIER_KEY, 0, -1)
+            visited = await self.redis.smembers(VISITED_KEY)
+            return set(visited), list(frontier), True
+        except Exception as exc:
+            logger.warning("scheduler.frontier_load_failed", error=str(exc))
+            return set(self._memory_visited), list(self._memory_frontier), False
+
+    async def _save_crawl_state(
+        self,
+        previously_visited: set[str],
+        visited_now: set[str],
+        frontier: list[str],
+        redis_available: bool,
+    ) -> None:
+        """Save unfinished URLs and visited state so later runs continue rather than restart."""
+        if not frontier:
+            self._memory_frontier = []
+            self._memory_visited = set()
+        else:
+            self._memory_frontier = list(frontier)
+            self._memory_visited = set(previously_visited) | set(visited_now)
+
+        if not redis_available:
+            return
+
+        try:
+            pipeline = self.redis.pipeline()
+            pipeline.delete(FRONTIER_KEY)
+            if frontier:
+                pipeline.rpush(FRONTIER_KEY, *frontier)
+                if visited_now:
+                    pipeline.sadd(VISITED_KEY, *visited_now)
+                pipeline.expire(VISITED_KEY, VISITED_TTL_SECONDS)
+            else:
+                # A full frontier cycle has completed. Clear visited state so the
+                # next run starts a fresh pass and can discover newly changed pages.
+                pipeline.delete(VISITED_KEY)
+            await pipeline.execute()
+        except Exception as exc:
+            logger.warning("scheduler.frontier_save_failed", error=str(exc))
 
     async def _archive_candidates(self, candidates: list[dict]) -> int:
         saved = 0
@@ -115,6 +169,48 @@ class CrawlScheduler:
         logger.info("scheduler.archive_index_summary", saved=saved, indexed=indexed)
         return saved
 
+    async def _archive_youtube_candidates(self, candidates: list[dict]) -> int:
+        """Persist discovered public video metadata for later language/content review."""
+        saved = 0
+        seen_urls: set[str] = set()
+        async with AsyncSessionLocal() as db:
+            for item in candidates:
+                url = str(item.get("url") or "").strip()
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                if not url.startswith("https://www.youtube.com/watch?v="):
+                    continue
+                existing = await db.execute(select(Source.id).where(Source.url == url))
+                if existing.scalar_one_or_none():
+                    continue
+
+                metadata = {
+                    "hunter": "gikuyu-youtube-discovery",
+                    "language": "ki",
+                    "discovery_query": str(item.get("query") or ""),
+                    "title": str(item.get("title") or ""),
+                    "channel": str(item.get("channel") or ""),
+                    "duration_seconds": item.get("duration"),
+                    "rights_state": "unknown_pending_rights_request",
+                    "content_state": "metadata_only",
+                    "review_required": True,
+                }
+                db.add(Source(
+                    url=url,
+                    domain=(urlparse(url).netloc or "www.youtube.com").lower(),
+                    source_type=SourceType.YOUTUBE,
+                    status=SourceStatus.PENDING,
+                    license="UNKNOWN — not stated",
+                    fetched_at=datetime.now(timezone.utc),
+                    raw_metadata=json.dumps(metadata, ensure_ascii=False),
+                ))
+                saved += 1
+            if saved:
+                await db.commit()
+        logger.info("scheduler.youtube_sources_saved", saved=saved, discovered=len(candidates))
+        return saved
+
     async def run_web_crawl(self, max_pages: int = 500) -> dict[str, object]:
         if self._run_lock.locked():
             raise RuntimeError("A hunter run is already in progress.")
@@ -123,14 +219,37 @@ class CrawlScheduler:
             page_budget = max(1, min(max_pages, 1000))
             self.last_run = {"status": "running", "started_at": started_at, "page_budget": page_budget}
             try:
-                results = await self.web.crawl(SEED_URLS, max_pages=page_budget)
+                visited_before, frontier_before, redis_available = await self._load_crawl_state()
+                start_urls = list(dict.fromkeys([*frontier_before, *SEED_URLS]))
+                results = await self.web.crawl(
+                    start_urls,
+                    max_pages=page_budget,
+                    already_visited=visited_before,
+                )
                 saved = await self._archive_candidates(results)
+                # Advance the persistent frontier only after corpus records are committed.
+                await self._save_crawl_state(
+                    visited_before,
+                    self.web.last_visited_urls,
+                    self.web.last_frontier_urls,
+                    redis_available,
+                )
+                youtube_sources_saved = 0
+                try:
+                    youtube_candidates = await self.youtube.discover(limit_per_query=25)
+                    youtube_sources_saved = await self._archive_youtube_candidates(youtube_candidates)
+                except Exception as exc:
+                    # Video discovery must not discard a successful web-crawl run.
+                    logger.warning("scheduler.youtube_discovery_failed", error=str(exc))
                 self.last_run = {
                     "status": "completed",
                     "started_at": started_at,
                     "completed_at": datetime.now(timezone.utc).isoformat(),
                     "pages_discovered": len(results),
                     "records_saved": saved,
+                    "video_sources_saved": youtube_sources_saved,
+                    "visited_this_run": len(self.web.last_visited_urls),
+                    "frontier_remaining": len(self.web.last_frontier_urls),
                     "page_budget": page_budget,
                 }
                 logger.info("scheduler.web_crawl_complete", **self.last_run, collection_model="notice_and_takedown")

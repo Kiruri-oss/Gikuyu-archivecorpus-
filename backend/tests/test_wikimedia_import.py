@@ -72,3 +72,10 @@ async def test_wikimedia_import_is_idempotent_for_existing_source(db_session):
 async def test_wikimedia_import_rejects_unsupported_language(db_session):
     with pytest.raises(ValueError):
         await import_random_wikipedia_pages(db_session, "xx", limit=1, client=FakeClient())
+
+
+@pytest.mark.asyncio
+async def test_wikimedia_import_rejects_other_languages(db_session):
+    for code in ("rw", "sw", "ha", "yo", "en"):
+        with pytest.raises(ValueError):
+            await import_random_wikipedia_pages(db_session, code, limit=1, client=FakeClient())

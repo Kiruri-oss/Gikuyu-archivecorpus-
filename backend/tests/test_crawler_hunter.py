@@ -133,3 +133,72 @@ def test_pdf_extraction_skips_encrypted_files_without_an_empty_password(monkeypa
 
     monkeypatch.setattr("app.crawlers.base.PdfReader", FakeReader)
     assert BaseCrawler._pdf_to_html(b"%PDF encrypted fixture", "https://example.org/locked.pdf") is None
+
+
+def test_epub_book_text_is_extracted_without_writing_archive_members_to_disk():
+    import io
+    import zipfile
+
+    from bs4 import BeautifulSoup
+
+    from app.crawlers.base import BaseCrawler
+
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as book:
+        book.writestr(
+            "OEBPS/chapter.xhtml",
+            "<html><head><title>Gĩkũyũ folklore</title></head><body>"
+            "<p>Nĩguo mũndũ aĩkaga wĩra wake mũciĩ. Andũ nĩmagĩrĩire ũndũ ũcio.</p>"
+            "</body></html>",
+        )
+
+    document = BaseCrawler._epub_to_html(payload.getvalue(), "https://example.org/folklore.epub")
+
+    assert document is not None
+    parsed = BeautifulSoup(document, "lxml")
+    assert parsed.title is not None
+    assert parsed.title.get_text() == "Gĩkũyũ folklore"
+    assert "mũciĩ" in parsed.get_text().lower()
+
+
+@pytest.mark.asyncio
+async def test_crawler_frontier_resumes_instead_of_restarting_from_first_page(monkeypatch):
+    pages = {
+        "https://example.org/start": """
+            <html><head><title>Gĩkũyũ starting page</title></head><body>
+            <p>Nĩguo mũndũ aĩkaga wĩra wake mũciĩ. Andũ nĩmagĩrĩire ũndũ ũcio.
+            This Gĩkũyũ page contains enough language material for corpus discovery.</p>
+            <a href="/next">Next Gĩkũyũ text</a></body></html>
+        """,
+        "https://example.org/next": """
+            <html><head><title>Gĩkũyũ second page</title></head><body>
+            <p>Nĩguo mũndũ aĩkaga wĩra wake mũciĩ. Andũ nĩmagĩrĩire ũndũ ũcio.
+            This second Gĩkũyũ page contains enough language material for corpus discovery.</p>
+            <a href="/third">Third Gĩkũyũ text</a></body></html>
+        """,
+        "https://example.org/third": """
+            <html><head><title>Gĩkũyũ third page</title></head><body>
+            <p>Nĩguo mũndũ aĩkaga wĩra wake mũciĩ. Andũ nĩmagĩrĩire ũndũ ũcio.
+            This third Gĩkũyũ page contains enough language material for corpus discovery.</p>
+            </body></html>
+        """,
+    }
+
+    async def fake_fetch(url: str):
+        return (pages[url], url) if url in pages else None
+
+    monkeypatch.setattr("app.services.language_detector.language_detector.detect", lambda _text: ("ki", 0.95))
+    crawler = WebCrawler()
+    monkeypatch.setattr(crawler, "fetch", fake_fetch)
+
+    first = await crawler.crawl(["https://example.org/start"], max_pages=1)
+    previously_visited = set(crawler.last_visited_urls)
+    first_frontier = list(crawler.last_frontier_urls)
+
+    second = await crawler.crawl(first_frontier, max_pages=1, already_visited=previously_visited)
+
+    assert len(first) == 1
+    assert first_frontier == ["https://example.org/next"]
+    assert len(second) == 1
+    assert crawler.last_visited_urls == {"https://example.org/next"}
+    assert crawler.last_frontier_urls == ["https://example.org/third"]
