@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import type { Media, Segment } from "@/types";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 type MediaDetail = Media & { file_url: string };
 type SegmentEdit = { transcript: string; translation: string };
 type Annotation = { id: string; segment_id: string; annotation_type: string; value: string; confidence?: number | null; notes?: string | null; created_at: string };
@@ -33,7 +32,6 @@ export default function TranscribePage() {
   const audioItems = useMemo(() => media.filter((item) => item.kind === "audio"), [media]);
 
   useEffect(() => {
-    if (!API_URL) return;
     let cancelled = false;
     setLoading(true);
     api.get<Media[]>("/api/v1/media?limit=100")
@@ -51,7 +49,7 @@ export default function TranscribePage() {
   }, []);
 
   useEffect(() => {
-    if (!API_URL || !selectedId) {
+    if (!selectedId) {
       setSelected(null);
       setSegments([]);
       return;
@@ -80,7 +78,7 @@ export default function TranscribePage() {
 
 
   useEffect(() => {
-    if (!API_URL || !selectedSegmentId) {
+    if (!selectedSegmentId) {
       setAnnotations([]);
       return;
     }
@@ -189,11 +187,11 @@ export default function TranscribePage() {
         <h1 className="text-3xl font-bold text-earth-900 sm:text-4xl">Build the Gĩkũyũ transcript corpus</h1>
         <p className="leading-7 text-gray-600">Listen to an approved recording, add time-aligned Gĩkũyũ text and translation, and improve existing segments where you have permission. Saved segments can later feed reviewed research datasets.</p>
       </header>
-      {!API_URL && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950"><h2 className="font-semibold">Transcription storage is not connected</h2><p className="mt-2 text-sm leading-6">The transcription interface is implemented, but this deployment has no configured archive API or persistent database. No transcript can be saved until the backend is connected.</p></div>}
-      {API_URL && loading && <p role="status" className="text-sm text-gray-500">Loading approved Gĩkũyũ recordings…</p>}
-      {API_URL && !loading && audioItems.length === 0 && <div className="rounded-xl border border-dashed p-6"><h2 className="font-semibold text-earth-900">No approved recordings are available yet</h2><p className="mt-2 text-sm leading-6 text-gray-600">Once Gĩkũyũ audio is contributed and approved, it will appear here for transcription.</p><Link href="/contribute" className="mt-4 inline-flex font-semibold text-earth-700 underline">Contribute a recording</Link></div>}
+      
+      {loading && <p role="status" className="text-sm text-gray-500">Loading approved Gĩkũyũ recordings…</p>}
+      {!loading && audioItems.length === 0 && <div className="rounded-xl border border-dashed p-6"><h2 className="font-semibold text-earth-900">No approved recordings are available yet</h2><p className="mt-2 text-sm leading-6 text-gray-600">Once Gĩkũyũ audio is contributed and approved, it will appear here for transcription.</p><Link href="/contribute" className="mt-4 inline-flex font-semibold text-earth-700 underline">Contribute a recording</Link></div>}
 
-      {API_URL && audioItems.length > 0 && <>
+      {audioItems.length > 0 && <>
         <div className="space-y-2"><label htmlFor="recording-select" className="block text-sm font-semibold text-gray-800">Choose a recording</label><select id="recording-select" value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white p-3">{audioItems.map((item) => <option key={item.id} value={item.id}>{item.title}{item.dialect ? ` — ${item.dialect}` : ""}</option>)}</select></div>
         {selected?.file_url && <div className="space-y-3 rounded-2xl border border-gray-200 p-5"><h2 className="font-semibold text-earth-900">{selected.title}</h2><audio controls preload="metadata" src={selected.file_url} className="w-full">Your browser does not support audio playback.</audio><p className="text-xs leading-5 text-gray-500">Use the audio player to identify the start and end time of each spoken segment. Do not publish sensitive or restricted material without permission.</p></div>}
 
