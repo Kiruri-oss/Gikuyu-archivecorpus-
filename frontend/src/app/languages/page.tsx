@@ -31,6 +31,7 @@ export default function LanguagesPage() {
           <Link href="/search" className="inline-flex rounded-lg bg-earth-900 px-5 py-3 font-semibold text-white">Explore available material</Link>
           <Link href="/contribute" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Contribute text or audio</Link>
           <Link href="/orthography" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Check orthography</Link>
+          <Link href="/transcribe" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Transcribe audio</Link>
           <Link href="/research" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Research datasets</Link>
           <Link href="/takedown" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Request correction or removal</Link>
         </div>
