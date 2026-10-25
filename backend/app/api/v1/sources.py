@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -44,6 +45,35 @@ async def list_sources(
         stmt = stmt.where(Source.status == status_filter)
     result = await db.execute(stmt)
     return [SourceRead.model_validate(source) for source in result.scalars().all()]
+
+
+@router.get("/references")
+async def list_restricted_source_references(db: DbSession, limit: int = 100) -> list[dict]:
+    """List discovered Gĩkũyũ source references where the body is not archived."""
+    bounded_limit = max(1, min(limit, 200))
+    result = await db.execute(
+        select(Source)
+        .where(Source.status == SourceStatus.PENDING)
+        .order_by(Source.created_at.desc())
+        .limit(bounded_limit)
+    )
+    references: list[dict] = []
+    for source in result.scalars().all():
+        try:
+            metadata = json.loads(source.raw_metadata or "{}")
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if metadata.get("language") != "ki" or metadata.get("collection_mode") != "metadata_and_source_link_only":
+            continue
+        references.append({
+            "id": str(source.id),
+            "url": source.url,
+            "domain": source.domain,
+            "title": str(metadata.get("title") or source.url),
+            "rights_state": metadata.get("rights_state", "unknown_pending_rights_review"),
+            "discovered_at": source.fetched_at.isoformat() if source.fetched_at else None,
+        })
+    return references
 
 
 @router.get("/{source_id}", response_model=SourceRead)
