@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status
@@ -9,7 +10,6 @@ from app.models.media import Media, MediaKind
 from app.models.source import Source, SourceType, SourceStatus
 from app.schemas.media import MediaRead, MediaDetail, MediaCreate, MediaSubmissionDetail
 from app.services.storage import storage_service
-from app.services.language_detector import language_detector
 from app.services.dedup import dedup_service
 from app.services.indexing import search_index
 from app.core.config import get_settings
@@ -80,16 +80,33 @@ async def upload_media(
     if not parsed.language_confirmed:
         raise HTTPException(status_code=422, detail="Confirm that this recording contains Gĩkũyũ language material.")
 
-    raw = await file.read()
-    if len(raw) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File exceeds maximum upload size")
+    content_type = (file.content_type or "").lower()
+    filename = (file.filename or "").lower()
+    allowed_extensions = (".wav", ".mp3", ".m4a", ".mp4", ".ogg", ".opus", ".webm", ".flac", ".aac")
+    if not content_type.startswith("audio/") and not filename.endswith(allowed_extensions):
+        raise HTTPException(status_code=415, detail="Upload an audio file such as WAV, MP3, M4A, OGG or WebM.")
 
-    sha = storage_service.compute_sha256(raw)
+    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    if file.size is not None and file.size > max_bytes:
+        raise HTTPException(status_code=413, detail="File exceeds maximum upload size")
+    try:
+        sha, size_bytes = await asyncio.to_thread(
+            storage_service.compute_sha256_file, file.file, max_bytes
+        )
+    except ValueError:
+        raise HTTPException(status_code=413, detail="File exceeds maximum upload size") from None
+
     if await dedup_service.media_exists(db, sha):
         raise HTTPException(status_code=409, detail="Duplicate media (sha256 match)")
 
     file_key = f"{user.id}/{sha[:2]}/{sha}"
-    storage_service.upload(settings.S3_BUCKET_AUDIO, file_key, raw, file.content_type or "application/octet-stream")
+    await asyncio.to_thread(
+        storage_service.upload_fileobj,
+        settings.S3_BUCKET_AUDIO,
+        file_key,
+        file.file,
+        content_type or "application/octet-stream",
+    )
 
     source = Source(
         url=f"upload://{sha}",
@@ -113,7 +130,7 @@ async def upload_media(
     db.add(source)
     await db.flush()
 
-    lang, score = language_detector.detect(parsed.title)
+    score = None  # The contributor attests to language; title text is not speech detection.
     media = Media(
         source_id=source.id,
         kind=MediaKind.AUDIO,
@@ -124,8 +141,8 @@ async def upload_media(
         genre=parsed.genre,
         file_key=file_key,
         sha256=sha,
-        size_bytes=len(raw),
-        mime_type=file.content_type,
+        size_bytes=size_bytes,
+        mime_type=content_type or "application/octet-stream",
         lang_score=score,
         license=parsed.license,
         allow_public_display=parsed.consent_to_publish,
