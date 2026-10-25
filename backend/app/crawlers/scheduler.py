@@ -35,20 +35,23 @@ class CrawlScheduler:
                 existing = await db.execute(select(Source.id).where(Source.url == url))
                 if existing.scalar_one_or_none():
                     continue
-                body = str(item["text"]).strip()
-                if not body:
-                    continue
-                digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
-                duplicate = await db.execute(select(TextRecord.id).where(TextRecord.sha256 == digest))
-                if duplicate.scalar_one_or_none():
-                    continue
                 licence = str(item.get("license") or "UNKNOWN — licence not stated")
                 identified_open_licence = item.get("rights_state") == "identified_open_licence"
+                body = str(item.get("text") or "").strip()
+                # A page with unclear or restrictive rights is still recorded as
+                # a discovery lead, but its protected body is never stored or indexed.
+                if identified_open_licence and not body:
+                    continue
+                digest = hashlib.sha256(body.encode("utf-8")).hexdigest() if body else None
+                if digest:
+                    duplicate = await db.execute(select(TextRecord.id).where(TextRecord.sha256 == digest))
+                    if duplicate.scalar_one_or_none():
+                        continue
                 source = Source(
                     url=url,
                     domain=url.split("/", 3)[2].lower(),
                     source_type=SourceType.WEB,
-                    status=SourceStatus.APPROVED,
+                    status=SourceStatus.APPROVED if identified_open_licence else SourceStatus.PENDING,
                     license=licence[:100],
                     language_confidence=float(item["confidence"]),
                     fetched_at=datetime.now(timezone.utc),
@@ -58,13 +61,19 @@ class CrawlScheduler:
                         "title": str(item["title"]),
                         "license_url": item.get("license_url"),
                         "license_detection": "explicit_open_licence" if identified_open_licence else "not_detected",
-                        "rights_state": item.get("rights_state", "unknown_pending_rights_request"),
+                        "rights_state": item.get("rights_state", "unknown_pending_rights_review"),
+                        "collection_mode": "full_text" if identified_open_licence else "metadata_and_source_link_only",
                         "review_required": not identified_open_licence,
-                        "collection_model": "notice_and_takedown",
+                        "source_url_is_reference_not_archive_content": not identified_open_licence,
                     }, ensure_ascii=False),
                 )
                 db.add(source)
                 await db.flush()
+                saved += 1
+                if not identified_open_licence:
+                    # Store source provenance only. No copyrighted page text,
+                    # scraped excerpt, transcript, or searchable body is retained.
+                    continue
                 record = TextRecord(
                     source_id=source.id,
                     source=source,
@@ -99,7 +108,6 @@ class CrawlScheduler:
                     "allow_ai_training": record.allow_ai_training,
                     "allow_commercial_use": record.allow_commercial_use,
                 })
-                saved += 1
             await db.commit()
         indexed = 0
         for document in documents_to_index:
