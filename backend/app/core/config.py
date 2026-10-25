@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     DATABASE_URL: PostgresDsn
-    REDIS_URL: RedisDsn
+    REDIS_URL: RedisDsn | None = None
 
     S3_ENDPOINT: str
     S3_ACCESS_KEY: str
@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     S3_REGION: str = "us-east-1"
     S3_USE_SSL: bool = True
 
-    MEILISEARCH_URL: str = "http://localhost:7700"
-    MEILISEARCH_KEY: str
+    MEILISEARCH_URL: AnyHttpUrl | None = None
+    MEILISEARCH_KEY: str | None = None
 
     FRONTEND_URL: AnyHttpUrl = "http://localhost:3000"
     BACKEND_URL: AnyHttpUrl = "http://localhost:8000"
