@@ -73,7 +73,7 @@ export default function HomePage() {
       </section>
 
       <section className="space-y-2 border-t border-gray-200 pt-6 text-sm leading-6 text-gray-500">
-        <p>This project is exclusively for Gĩkũyũ. It is not a multilingual directory. The goal is to build a deep, useful corpus for the language.</p>
+        <p>Gĩkũyũ is the sole focus of this archive. The goal is to build a deep, useful corpus for the language.</p>
         <p>Public access, archive storage, research use and AI-training permission are recorded separately where the source terms require it. The Hunter preserves source evidence so that records can be reviewed and corrected.</p>
       </section>
     </div>
