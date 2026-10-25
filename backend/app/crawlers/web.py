@@ -11,8 +11,6 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 settings = get_settings()
 
-# Avoid obvious crawler traps while retaining ordinary article, book and catalogue
-# URLs. Query parameters are retained because many digital libraries use them.
 _SKIP_PATH_PARTS = (
     "/login", "/logout", "/signin", "/signup", "/register",
     "/cart", "/checkout", "/account", "/wp-admin",
@@ -25,12 +23,12 @@ _SKIP_EXTENSIONS = (
 
 
 class WebCrawler(BaseCrawler):
-    """Bounded multi-domain Gĩkũyũ web hunter.
+    """Bounded multi-domain Gĩkũyũ source hunter.
 
-    It follows external references rather than staying trapped on each seed host,
-    but applies strict page/domain budgets, URL safety checks and robots.txt on
-    every origin. Only pages with an explicitly detected supported open licence
-    are extracted as corpus text; other pages can reveal further source leads.
+    It indexes leads across the public web, respecting robots.txt and strict
+    page/domain budgets. Full text is extracted only when an explicit supported
+    open licence is present and the language detector identifies Gĩkũyũ.
+    Other pages remain source leads with URL/title/rights state, not copied text.
     """
 
     def crawl_links(self, html: str, base_url: str) -> list[str]:
@@ -43,14 +41,16 @@ class WebCrawler(BaseCrawler):
             absolute = urljoin(base_url, href)
             if not is_safe_http_url(absolute):
                 continue
-            parsed = urlparse(absolute)
-            path = parsed.path.lower()
-            if any(part in path for part in _SKIP_PATH_PARTS):
-                continue
-            if path.endswith(_SKIP_EXTENSIONS):
+            path = urlparse(absolute).path.lower()
+            if any(part in path for part in _SKIP_PATH_PARTS) or path.endswith(_SKIP_EXTENSIONS):
                 continue
             links.append(canonicalize_url(absolute))
         return list(dict.fromkeys(links))[:250]
+
+    @staticmethod
+    def _page_title(html: str, url: str) -> str:
+        soup = BeautifulSoup(html, "lxml")
+        return (soup.title.get_text(" ", strip=True) if soup.title else "")[:500] or url
 
     async def crawl(
         self,
@@ -78,9 +78,7 @@ class WebCrawler(BaseCrawler):
             if url in visited:
                 continue
             host = (urlparse(url).hostname or "").lower()
-            if not host:
-                continue
-            if host not in domains and len(domains) >= domain_budget:
+            if not host or (host not in domains and len(domains) >= domain_budget):
                 continue
             if domain_visits.get(host, 0) >= per_domain_budget:
                 continue
@@ -99,17 +97,29 @@ class WebCrawler(BaseCrawler):
                 continue
             domains.add(final_host)
 
-            # Links are useful discovery leads even when a page has no explicit
-            # open licence. Unlicensed page text is never copied into the corpus.
             links = self.crawl_links(html, final_url)
             licence = self.detect_open_license(html, final_url)
+            title = self._page_title(html, final_url)
+            candidate = {
+                "url": final_url,
+                "title": title,
+                "text": "",
+                "language": "unknown",
+                "confidence": 0.0,
+                "license": licence or "UNVERIFIED",
+                "license_url": None,
+                "permits_research": False,
+                "permits_ai_training": False,
+                "permits_commercial_use": False,
+                "archive_content": False,
+                "status": "pending",
+            }
+
             if licence:
                 page = self.extract(html, final_url, licence)
-                if page and page.language == "ki" and page.confidence >= settings.LANGUAGE_DETECTION_THRESHOLD:
-                    results.append({
-                        "url": page.url,
+                if page:
+                    candidate.update({
                         "title": page.title,
-                        "text": page.text,
                         "language": page.language,
                         "confidence": page.confidence,
                         "license": page.license,
@@ -117,14 +127,21 @@ class WebCrawler(BaseCrawler):
                         "permits_research": page.permits_research,
                         "permits_ai_training": page.permits_ai_training,
                         "permits_commercial_use": page.permits_commercial_use,
-                        "status": "pending",
                     })
-                    logger.info("crawler.candidate_found", url=page.url, license=page.license)
+                    if page.language == "ki" and page.confidence >= settings.LANGUAGE_DETECTION_THRESHOLD:
+                        candidate["text"] = page.text
+                        candidate["archive_content"] = True
+                        logger.info("crawler.gikuyu_content_candidate", url=page.url, license=page.license)
+                    else:
+                        logger.info("crawler.source_lead_found", url=page.url, reason="not_confidently_gikuyu")
             else:
-                logger.info("crawler.source_lead_found", url=final_url, reason="no_explicit_open_license")
+                logger.info("crawler.source_lead_found", url=final_url, reason="rights_not_detected")
 
-            # Cross-domain traversal is what makes this a hunter rather than a
-            # seed-site-only spider. Per-domain and global budgets prevent traps.
+            # Every reachable lead is retained as source metadata; only explicitly
+            # licensed Gĩkũyũ text is copied into the text corpus.
+            results.append(candidate)
+
+            # Follow cross-domain references to expand discovery beyond the seeds.
             for link in links:
                 if link in visited or link in queued:
                     continue
@@ -143,7 +160,8 @@ class WebCrawler(BaseCrawler):
             "crawler.crawl_complete",
             visited=len(visited),
             domains=len(domains),
-            candidates=len(results),
+            source_leads=len(results),
+            licensed_gikuyu_text=sum(1 for item in results if item["archive_content"]),
             page_budget=page_budget,
             domain_budget=domain_budget,
         )
