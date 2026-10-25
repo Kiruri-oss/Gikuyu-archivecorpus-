@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 
-const backendConfigured = Boolean(process.env.NEXT_PUBLIC_API_URL);
-
 type TextResponse = { id: string; review_status?: string; message?: string };
 type AudioResponse = { id: string; review_status?: string; message?: string };
 
