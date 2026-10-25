@@ -18,6 +18,7 @@ class TextRecordCreate(BaseModel):
     allow_commercial_use: bool = False
     consent_to_archive: bool = False
     confirm_rights: bool = False
+    language_confirmed: bool = False
     notes: str | None = Field(default=None, max_length=5000)
 
     @field_validator("language_code")
