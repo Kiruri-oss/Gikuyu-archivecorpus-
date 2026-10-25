@@ -19,6 +19,7 @@ export default function ContributePage() {
   const [license, setLicense] = useState("CC-BY");
   const [file, setFile] = useState<File | null>(null);
   const [speaker, setSpeaker] = useState("");
+  const [speakerConsent, setSpeakerConsent] = useState(false);
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [archiveConsent, setArchiveConsent] = useState(false);
   const [publishConsent, setPublishConsent] = useState(false);
@@ -63,6 +64,7 @@ export default function ContributePage() {
         license,
         consent_to_archive: archiveConsent,
         confirm_rights: rightsConfirmed,
+        speaker_consent_confirmed: kind === "audio" ? speakerConsent : false,
         consent_to_publish: publishConsent,
         allow_research_use: researchConsent,
         allow_ai_training: aiConsent,
@@ -139,7 +141,7 @@ export default function ContributePage() {
           <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={rightsConfirmed} onChange={(e) => setRightsConfirmed(e.target.checked)} required className="mt-1" /><span>I have the right to contribute this material and have not knowingly included material I am not authorised to submit.</span></label>
           <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={archiveConsent} onChange={(e) => setArchiveConsent(e.target.checked)} required className="mt-1" /><span>I consent to the archive storing this contribution for review.</span></label>
           {kind === "audio" && <p className="rounded-lg border border-earth-500/20 bg-white p-3 text-sm leading-6 text-earth-900">For audio: submit only a recording you own or have permission to share, and confirm that the speaker(s) have consented to being recorded and to the intended use.</p>}
-          {kind === "audio" && <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" required className="mt-1" /><span>I have permission from the speaker(s), and I own this recording or have the right to submit it.</span></label>}
+          {kind === "audio" && <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={speakerConsent} onChange={(e) => setSpeakerConsent(e.target.checked)} required className="mt-1" /><span>I have permission from the speaker(s), and I own this recording or have the right to submit it.</span></label>}
           <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={publishConsent} onChange={(e) => setPublishConsent(e.target.checked)} className="mt-1" /><span>I permit public display after review.</span></label>
           <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={researchConsent} onChange={(e) => setResearchConsent(e.target.checked)} className="mt-1" /><span>I permit research use, subject to the selected licence and archive review.</span></label>
           <label className="flex items-start gap-3 text-sm leading-6 text-gray-700"><input type="checkbox" checked={aiConsent} onChange={(e) => setAiConsent(e.target.checked)} className="mt-1" /><span>I permit AI-training use, subject to the selected licence and archive review.</span></label>
