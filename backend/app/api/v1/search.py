@@ -61,6 +61,7 @@ async def search(
             .where(
                 Media.id.in_(media_ids),
                 Source.status == SourceStatus.APPROVED,
+                Media.language_code == "ki",
                 Media.allow_public_display.is_(True),
             )
         )
@@ -75,6 +76,7 @@ async def search(
             .where(
                 Segment.id.in_(segment_ids),
                 Source.status == SourceStatus.APPROVED,
+                Media.language_code == "ki",
                 Media.allow_public_display.is_(True),
             )
         )
