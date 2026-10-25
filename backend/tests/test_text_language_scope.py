@@ -26,4 +26,5 @@ def test_text_record_rejects_every_non_gikuyu_language(language_code):
             license="CC-BY",
             consent_to_archive=True,
             confirm_rights=True,
+            language_confirmed=True,
         )
