@@ -12,6 +12,7 @@ class TextRecordCreate(BaseModel):
     dialect: str | None = Field(default=None, max_length=100)
     genre: str | None = Field(default=None, max_length=100)
     license: str = Field(min_length=1, max_length=100)
+    consent_to_publish: bool = False
     allow_research_use: bool = False
     allow_ai_training: bool = False
     allow_commercial_use: bool = False
@@ -40,7 +41,12 @@ class TextRecordRead(BaseModel):
     dialect: str | None
     genre: str | None
     license: str
+    allow_public_display: bool
     allow_research_use: bool
     allow_ai_training: bool
     allow_commercial_use: bool
     created_at: datetime
+
+class TextRecordSubmissionRead(TextRecordRead):
+    review_status: str = "pending"
+    message: str = "Received for review. It is not public until a reviewer approves publication."
