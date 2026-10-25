@@ -112,6 +112,6 @@ def detect_open_licence(html: str, page_url: str) -> OpenLicence | None:
             "kenya open data license", "kenya open data licence",
             "government of kenya open data license", "government of kenya open data licence",
         )):
-            return OpenLicence("KE-GOV-OPEN", licence_url)
+            return OpenLicence("KE-GOV-OPEN", licence_url, permits_research=True, permits_ai_training=False, permits_commercial_use=False)
 
     return None
