@@ -22,6 +22,8 @@ logger = get_logger(__name__)
 settings = get_settings()
 MAX_PAGE_BYTES = 25 * 1024 * 1024
 MAX_PDF_PAGES = 500
+MAX_EPUB_ENTRIES = 300
+MAX_EPUB_TEXT_BYTES = 10 * 1024 * 1024
 MAX_EXTRACTED_TEXT_CHARS = 250000
 MAX_REDIRECTS = 5
 
