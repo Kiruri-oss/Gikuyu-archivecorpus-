@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 async def test_upload_media_creates_record(client, db_session, auth_headers):
     with patch("app.api.v1.media.storage_service.upload", return_value="test/key") as mock_upload, \
          patch("app.api.v1.media.search_index.index_document", new_callable=AsyncMock) as mock_index:
-        payload = json.dumps({"title": "Ngano ya Njũkĩ", "speaker": "Wanjiku", "dialect": "Ki-Muranga", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "consent_to_publish": True, "allow_research_use": True, "allow_ai_training": False, "allow_commercial_use": False})
+        payload = json.dumps({"title": "Ngano ya Njũkĩ", "speaker": "Wanjiku", "dialect": "Ki-Muranga", "license": "CC BY 4.0", "consent_to_archive": True, "confirm_rights": True, "speaker_consent_confirmed": True, "language_confirmed": True, "consent_to_publish": True, "allow_research_use": True, "allow_ai_training": False, "allow_commercial_use": False})
         files = {"file": ("clip.webm", io.BytesIO(b"fake-audio-bytes"), "audio/webm")}
         resp = await client.post(
             "/api/v1/media",
