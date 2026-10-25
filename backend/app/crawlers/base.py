@@ -10,6 +10,7 @@ from urllib.robotparser import RobotFileParser
 from ipaddress import ip_address
 
 import httpx
+import trafilatura
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
@@ -325,7 +326,21 @@ class BaseCrawler:
             tag.decompose()
 
         title = (soup.title.string or "").strip() if soup.title else ""
-        body = soup.get_text(separator=" ", strip=True)
+        body = ""
+        try:
+            extracted = trafilatura.extract(
+                html,
+                include_comments=False,
+                include_tables=True,
+                include_links=False,
+                favor_precision=False,
+            )
+            if extracted:
+                body = extracted.strip()
+        except Exception as exc:
+            logger.debug("crawler.main_text_extraction_fallback", url=base_url, error=str(exc))
+        if len(body) < 100:
+            body = soup.get_text(separator=" ", strip=True)
         if len(body) < 100:
             return None
 
