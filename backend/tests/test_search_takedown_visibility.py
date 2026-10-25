@@ -1,6 +1,5 @@
 import pytest
 
-from app.crawlers import scheduler as scheduler_module
 from app.models.media import Media, MediaKind
 from app.models.segment import Segment
 from app.models.source import Source, SourceStatus, SourceType
