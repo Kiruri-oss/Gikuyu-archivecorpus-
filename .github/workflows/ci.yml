@@ -51,6 +51,9 @@ jobs:
             sleep 2
           done
           node -e 'const fs=require("fs"); const h=JSON.parse(fs.readFileSync("/tmp/gikuyu-health.json","utf8")); if(h.status!=="ok" || h.service!=="gikuyu-archive-web") { console.error(h); process.exit(1); }'
+          orthography_status=$(curl --silent --output /tmp/gikuyu-orthography.json --write-out "%{http_code}" -H "Content-Type: application/json" --data '{"text":"mucii"}' http://127.0.0.1:3000/api/v1/orthography)
+          test "$orthography_status" = "200"
+          node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-orthography.json","utf8")); if(d.suggested_text!=="mũciĩ" || d.suggestions.length!==1) { console.error(d); process.exit(1); }'
           invalid_status=$(curl --silent --output /tmp/gikuyu-invalid.json --write-out "%{http_code}" "http://127.0.0.1:3000/api/v1/search?q=x")
           test "$invalid_status" = "400"
           valid_status=$(curl --silent --output /tmp/gikuyu-search.json --write-out "%{http_code}" --max-time 20 "http://127.0.0.1:3000/api/v1/search?q=Gikuyu")
