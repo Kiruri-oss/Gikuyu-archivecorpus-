@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
@@ -10,6 +11,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.session import AsyncSessionLocal
 from app.crawlers.web import WebCrawler
+from app.crawlers.youtube import YouTubeCrawler
 from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
 from app.services.indexing import search_index
@@ -23,6 +25,7 @@ class CrawlScheduler:
     def __init__(self) -> None:
         self.scheduler = AsyncIOScheduler()
         self.web = WebCrawler()
+        self.youtube = YouTubeCrawler()
         self.last_run: dict[str, object] = {"status": "never_run"}
         self._run_lock = asyncio.Lock()
 
@@ -115,6 +118,44 @@ class CrawlScheduler:
         logger.info("scheduler.archive_index_summary", saved=saved, indexed=indexed)
         return saved
 
+    async def _archive_youtube_candidates(self, candidates: list[dict]) -> int:
+        """Persist discovered public video metadata for later language/content review."""
+        saved = 0
+        async with AsyncSessionLocal() as db:
+            for item in candidates:
+                url = str(item.get("url") or "").strip()
+                if not url.startswith("https://www.youtube.com/watch?v="):
+                    continue
+                existing = await db.execute(select(Source.id).where(Source.url == url))
+                if existing.scalar_one_or_none():
+                    continue
+
+                metadata = {
+                    "hunter": "gikuyu-youtube-discovery",
+                    "language": "ki",
+                    "discovery_query": str(item.get("query") or ""),
+                    "title": str(item.get("title") or ""),
+                    "channel": str(item.get("channel") or ""),
+                    "duration_seconds": item.get("duration"),
+                    "rights_state": "unknown_pending_rights_request",
+                    "content_state": "metadata_only",
+                    "review_required": True,
+                }
+                db.add(Source(
+                    url=url,
+                    domain=(urlparse(url).netloc or "www.youtube.com").lower(),
+                    source_type=SourceType.YOUTUBE,
+                    status=SourceStatus.PENDING,
+                    license="UNKNOWN — not stated",
+                    fetched_at=datetime.now(timezone.utc),
+                    raw_metadata=json.dumps(metadata, ensure_ascii=False),
+                ))
+                saved += 1
+            if saved:
+                await db.commit()
+        logger.info("scheduler.youtube_sources_saved", saved=saved, discovered=len(candidates))
+        return saved
+
     async def run_web_crawl(self, max_pages: int = 500) -> dict[str, object]:
         if self._run_lock.locked():
             raise RuntimeError("A hunter run is already in progress.")
@@ -125,12 +166,20 @@ class CrawlScheduler:
             try:
                 results = await self.web.crawl(SEED_URLS, max_pages=page_budget)
                 saved = await self._archive_candidates(results)
+                youtube_sources_saved = 0
+                try:
+                    youtube_candidates = await self.youtube.discover(limit_per_query=25)
+                    youtube_sources_saved = await self._archive_youtube_candidates(youtube_candidates)
+                except Exception as exc:
+                    # Video discovery must not discard a successful web-crawl run.
+                    logger.warning("scheduler.youtube_discovery_failed", error=str(exc))
                 self.last_run = {
                     "status": "completed",
                     "started_at": started_at,
                     "completed_at": datetime.now(timezone.utc).isoformat(),
                     "pages_discovered": len(results),
                     "records_saved": saved,
+                    "video_sources_saved": youtube_sources_saved,
                     "page_budget": page_budget,
                 }
                 logger.info("scheduler.web_crawl_complete", **self.last_run, collection_model="notice_and_takedown")
