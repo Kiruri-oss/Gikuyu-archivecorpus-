@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+import json
 from urllib.parse import urlparse
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
@@ -8,8 +9,12 @@ from app.core.deps import DbSession, ReviewerUser
 from app.models.source import Source, SourceStatus
 from app.schemas.source import SourceCreate, SourceRead, SourceReview
 from app.services.language_detector import language_detector
+from app.models.text_record import TextRecord
+from app.services.indexing import search_index
+from app.core.logging import get_logger
 
 router = APIRouter(prefix="/sources", tags=["sources"])
+logger = get_logger(__name__)
 
 
 @router.post("", response_model=SourceRead, status_code=status.HTTP_201_CREATED)
@@ -41,7 +46,7 @@ async def list_sources(
 
 
 @router.get("/{source_id}", response_model=SourceRead)
-async def get_source(source_id: uuid.UUID, db: DbSession) -> SourceRead:
+async def get_source(source_id: uuid.UUID, db: DbSession, _: ReviewerUser) -> SourceRead:
     source = await db.get(Source, source_id)
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
@@ -57,11 +62,31 @@ async def review_source(
         raise HTTPException(status_code=404, detail="Source not found")
     if payload.status == SourceStatus.PENDING:
         raise HTTPException(status_code=422, detail="A review must approve, reject or take down the source.")
+    text_result = await db.execute(select(TextRecord).where(TextRecord.source_id == source.id))
+    text_records = text_result.scalars().all()
+    if payload.status == SourceStatus.APPROVED and any(not record.allow_public_display for record in text_records):
+        raise HTTPException(status_code=422, detail="The contributor has not consented to public display of this text.")
     source.status = payload.status
     source.reviewed_by = user.id
     source.reviewed_at = datetime.now(timezone.utc)
     source.reviewer_notes = payload.reviewer_notes
     await db.flush()
+    if source.status == SourceStatus.APPROVED:
+        for record in text_records:
+            try:
+                await search_index.index_document("texts", {
+                    "id": str(record.id),
+                    "title": record.title,
+                    "body": record.body,
+                    "language_code": record.language_code,
+                    "dialect": record.dialect or "",
+                    "genre": record.genre or "",
+                    "license": record.license,
+                    "allow_ai_training": record.allow_ai_training,
+                    "allow_commercial_use": record.allow_commercial_use,
+                })
+            except Exception as exc:
+                logger.warning("text.search_index_failed", text_record_id=str(record.id), error=str(exc))
     return SourceRead.model_validate(source)
 
 
