@@ -28,9 +28,9 @@ class CrawlResult:
     links: list[str]
     license: str
     license_url: str | None = None
-    permits_research: bool = True
-    permits_ai_training: bool = True
-    permits_commercial_use: bool = True
+    permits_research: bool = False
+    permits_ai_training: bool = False
+    permits_commercial_use: bool = False
 
 
 class BaseCrawler:
@@ -186,7 +186,7 @@ class BaseCrawler:
             links=list(dict.fromkeys(links))[:100],
             license=licence.name if licence else license_name,
             license_url=licence.url or None if licence else None,
-            permits_research=licence.permits_research if licence else True,
-            permits_ai_training=licence.permits_ai_training if licence else True,
-            permits_commercial_use=licence.permits_commercial_use if licence else True,
+            permits_research=licence.permits_research if licence else False,
+            permits_ai_training=licence.permits_ai_training if licence else False,
+            permits_commercial_use=licence.permits_commercial_use if licence else False,
         )
