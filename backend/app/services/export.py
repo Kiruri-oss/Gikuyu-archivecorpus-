@@ -21,6 +21,22 @@ def _permission_filter(model, purpose: ExportPurpose):
     return model.allow_research_use.is_(True)
 
 
+def _license_url(source: Source) -> str:
+    try:
+        metadata = json.loads(source.raw_metadata or "{}")
+        return str(metadata.get("license_url") or "")
+    except (TypeError, ValueError):
+        return ""
+
+
+def _source_metadata(source: Source) -> dict[str, str]:
+    return {
+        "source_url": source.url,
+        "source_found_at": source.created_at.isoformat() if source.created_at else "",
+        "license_url": _license_url(source),
+    }
+
+
 class ExportService:
     @staticmethod
     async def export_jsonl(
@@ -40,7 +56,7 @@ class ExportService:
                 "record_type": "transcript_segment",
                 "id": str(segment.id),
                 "media_id": str(media.id),
-                "source_url": source.url,
+                **_source_metadata(source),
                 "audio_key": media.file_key,
                 "start": segment.start_seconds,
                 "end": segment.end_seconds,
@@ -69,7 +85,7 @@ class ExportService:
                 "id": str(record.id),
                 "title": record.title,
                 "text": record.body,
-                "source_url": source.url,
+                **_source_metadata(source),
                 "language_code": record.language_code,
                 "dialect": record.dialect,
                 "genre": record.genre,
@@ -88,14 +104,14 @@ class ExportService:
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow([
-            "record_type", "id", "media_id", "source_url", "title", "text", "start", "end",
-            "transcript", "translation", "language_code", "dialect", "speaker",
-            "author", "year", "genre", "license", "allow_research_use",
+            "record_type", "id", "media_id", "source_url", "source_found_at", "license_url",
+            "title", "text", "start", "end", "transcript", "translation", "language_code",
+            "dialect", "speaker", "author", "year", "genre", "license", "allow_research_use",
             "allow_ai_training", "allow_commercial_use",
         ])
 
         media_stmt = (
-            select(Segment, Media)
+            select(Segment, Media, Source)
             .join(Media, Segment.media_id == Media.id)
             .join(Source, Media.source_id == Source.id)
             .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose))
@@ -103,9 +119,11 @@ class ExportService:
         if dialect:
             media_stmt = media_stmt.where(Media.dialect == dialect)
         media_result = await db.execute(media_stmt)
-        for segment, media in media_result.all():
+        for segment, media, source in media_result.all():
+            provenance = _source_metadata(source)
             writer.writerow([
-                "transcript_segment", str(segment.id), str(media.id), source.url, media.title, "",
+                "transcript_segment", str(segment.id), str(media.id), provenance["source_url"],
+                provenance["source_found_at"], provenance["license_url"], media.title, "",
                 segment.start_seconds, segment.end_seconds, segment.transcript or "",
                 segment.translation or "", media.dialect or "", media.dialect or "",
                 media.speaker or "", "", "", media.genre or "", media.license or "",
@@ -113,16 +131,18 @@ class ExportService:
             ])
 
         text_stmt = (
-            select(TextRecord)
+            select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
             .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
         text_result = await db.execute(text_stmt)
-        for record in text_result.scalars().all():
+        for record, source in text_result.all():
+            provenance = _source_metadata(source)
             writer.writerow([
-                "text", str(record.id), "", source.url, record.title, record.body, "", "", "", "",
+                "text", str(record.id), "", provenance["source_url"], provenance["source_found_at"],
+                provenance["license_url"], record.title, record.body, "", "", "", "",
                 record.language_code, record.dialect or "", "", record.author or "",
                 record.year or "", record.genre or "", record.license,
                 record.allow_research_use, record.allow_ai_training, record.allow_commercial_use,
