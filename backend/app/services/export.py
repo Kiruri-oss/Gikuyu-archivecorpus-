@@ -27,7 +27,7 @@ class ExportService:
         db: AsyncSession, dialect: str | None = None, purpose: ExportPurpose = "research"
     ) -> AsyncIterator[str]:
         stmt = (
-            select(Segment, Media)
+            select(Segment, Media, Source)
             .join(Media, Segment.media_id == Media.id)
             .join(Source, Media.source_id == Source.id)
             .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose))
@@ -35,11 +35,12 @@ class ExportService:
         if dialect:
             stmt = stmt.where(Media.dialect == dialect)
         result = await db.execute(stmt)
-        for segment, media in result.all():
+        for segment, media, source in result.all():
             yield json.dumps({
                 "record_type": "transcript_segment",
                 "id": str(segment.id),
                 "media_id": str(media.id),
+                "source_url": source.url,
                 "audio_key": media.file_key,
                 "start": segment.start_seconds,
                 "end": segment.end_seconds,
@@ -55,19 +56,20 @@ class ExportService:
             }, ensure_ascii=False) + "\n"
 
         text_stmt = (
-            select(TextRecord)
+            select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
             .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
         text_result = await db.execute(text_stmt)
-        for record in text_result.scalars().all():
+        for record, source in text_result.all():
             yield json.dumps({
                 "record_type": "text",
                 "id": str(record.id),
                 "title": record.title,
                 "text": record.body,
+                "source_url": source.url,
                 "language_code": record.language_code,
                 "dialect": record.dialect,
                 "genre": record.genre,
@@ -86,7 +88,7 @@ class ExportService:
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow([
-            "record_type", "id", "media_id", "title", "text", "start", "end",
+            "record_type", "id", "media_id", "source_url", "title", "text", "start", "end",
             "transcript", "translation", "language_code", "dialect", "speaker",
             "author", "year", "genre", "license", "allow_research_use",
             "allow_ai_training", "allow_commercial_use",
@@ -103,7 +105,7 @@ class ExportService:
         media_result = await db.execute(media_stmt)
         for segment, media in media_result.all():
             writer.writerow([
-                "transcript_segment", str(segment.id), str(media.id), media.title, "",
+                "transcript_segment", str(segment.id), str(media.id), source.url, media.title, "",
                 segment.start_seconds, segment.end_seconds, segment.transcript or "",
                 segment.translation or "", media.dialect or "", media.dialect or "",
                 media.speaker or "", "", "", media.genre or "", media.license or "",
@@ -120,7 +122,7 @@ class ExportService:
         text_result = await db.execute(text_stmt)
         for record in text_result.scalars().all():
             writer.writerow([
-                "text", str(record.id), "", record.title, record.body, "", "", "", "",
+                "text", str(record.id), "", source.url, record.title, record.body, "", "", "", "",
                 record.language_code, record.dialect or "", "", record.author or "",
                 record.year or "", record.genre or "", record.license,
                 record.allow_research_use, record.allow_ai_training, record.allow_commercial_use,
