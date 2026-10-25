@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 
 from app.core.deps import AdminUser
 from app.crawlers.scheduler import SEED_URLS, crawl_scheduler
@@ -21,15 +23,20 @@ async def hunter_status(_: AdminUser) -> dict[str, object]:
     }
 
 
-@router.post("/run")
+@router.post("/run", status_code=status.HTTP_202_ACCEPTED)
 async def run_hunter(
+    background_tasks: BackgroundTasks,
     _: AdminUser,
     max_pages: int = Query(default=500, ge=1, le=1000),
 ) -> dict[str, object]:
-    """Run a bounded Gĩkũyũ crawl immediately (administrator only)."""
-    if crawl_scheduler._run_lock.locked():
+    """Queue a bounded Gĩkũyũ crawl without holding the admin HTTP request open."""
+    previous_status = crawl_scheduler.last_run.get("status")
+    if crawl_scheduler._run_lock.locked() or previous_status in {"queued", "running"}:
         raise HTTPException(status_code=409, detail="A hunter run is already in progress.")
-    try:
-        return await crawl_scheduler.run_web_crawl(max_pages=max_pages)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    crawl_scheduler.last_run = {
+        "status": "queued",
+        "queued_at": datetime.now(timezone.utc).isoformat(),
+        "page_budget": max_pages,
+    }
+    background_tasks.add_task(crawl_scheduler.run_web_crawl, max_pages=max_pages)
+    return {"status": "queued", "page_budget": max_pages}
