@@ -36,8 +36,9 @@ async def create_segment(payload: SegmentCreate, db: DbSession, user: CurrentUse
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
     source = await db.get(Source, media.source_id)
-    if not source or source.status != SourceStatus.APPROVED or not media.allow_public_display:
-        raise HTTPException(status_code=409, detail="Media must be approved for public transcription.")
+    is_owner = media.file_key.startswith(f"{user.id}/")
+    if not source or (source.status != SourceStatus.APPROVED and not is_owner) or (source.status == SourceStatus.APPROVED and not media.allow_public_display):
+        raise HTTPException(status_code=409, detail="Only the contributor or an approved public record can be transcribed.")
 
     segment = Segment(
         media_id=payload.media_id,
