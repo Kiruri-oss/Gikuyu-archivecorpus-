@@ -31,6 +31,16 @@ async def submit_takedown(payload: TakedownCreate, db: DbSession) -> TakedownRea
     )
     db.add(takedown)
     await db.flush()
+
+    # Hide an approved source immediately when a removal request is received.
+    # Keep the record and provenance while the request is queued for review.
+    source_result = await db.execute(select(Source).where(Source.url == payload.url))
+    source = source_result.scalar_one_or_none()
+    if source and source.status == SourceStatus.APPROVED:
+        source.status = SourceStatus.PENDING
+        source.reviewer_notes = f"Temporarily hidden while takedown request {takedown.id} is reviewed."
+        await db.flush()
+
     return TakedownRead.model_validate(takedown)
 
 
