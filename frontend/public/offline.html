@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#3d2f1f">
+  <title>Offline · Gĩkũyũ Archive Corpus</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; background: #f8f5ef; color: #2f2418; }
+    body { margin: 0; padding: 2rem 1rem; }
+    main { max-width: 42rem; margin: 8vh auto; padding: 2rem; background: #fff; border: 1px solid #e5ded2; border-radius: 1.25rem; }
+    h1 { line-height: 1.15; }
+    p, li { line-height: 1.7; }
+    a { color: #6b4323; }
+    .note { padding: 1rem; background: #f8f5ef; border-radius: .75rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <p><strong>Gĩkũyũ Archive Corpus</strong></p>
+    <h1>You are offline</h1>
+    <p>The archive could not reach the network. This offline page is available, but live corpus search, uploads and server-side records need a connection.</p>
+    <div class="note">
+      <h2>Your saved references</h2>
+      <p>This device-only reading list may be shown below if it was saved in this browser.</p>
+      <ul id="saved-list"><li>No saved references were found on this device.</li></ul>
+    </div>
+    <p>Reconnect to continue exploring the Gĩkũyũ corpus.</p>
+    <p><a href="/">Try the archive again</a></p>
+  </main>
+  <script>
+    (function () {
+      var target = document.getElementById("saved-list");
+      try {
+        var items = JSON.parse(localStorage.getItem("gikuyu-archive:saved-references:v1") || "[]");
+        if (!Array.isArray(items) || items.length === 0) return;
+        target.textContent = "";
+        items.slice(0, 200).forEach(function (item) {
+          var li = document.createElement("li");
+          var title = document.createElement("span");
+          title.textContent = String(item.title || "Saved Gĩkũyũ reference");
+          li.appendChild(title);
+          target.appendChild(li);
+        });
+      } catch (_) {}
+    })();
+  </script>
+</body>
+</html>
