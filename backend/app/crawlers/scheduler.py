@@ -40,6 +40,7 @@ class CrawlScheduler:
                 if duplicate.scalar_one_or_none():
                     continue
                 licence = str(item.get("license") or "UNKNOWN — licence not stated")
+                identified_open_licence = item.get("rights_state") == "identified_open_licence"
                 source = Source(
                     url=url,
                     domain=url.split("/", 3)[2].lower(),
@@ -53,9 +54,9 @@ class CrawlScheduler:
                         "language": "ki",
                         "title": str(item["title"]),
                         "license_url": item.get("license_url"),
-                        "license_detection": "explicit_open_licence" if item.get("license_url") else "not_detected",
+                        "license_detection": "explicit_open_licence" if identified_open_licence else "not_detected",
                         "rights_state": item.get("rights_state", "unknown_pending_rights_request"),
-                        "review_required": not bool(item.get("license_url")),
+                        "review_required": not identified_open_licence,
                         "collection_model": "notice_and_takedown",
                     }, ensure_ascii=False),
                 )
