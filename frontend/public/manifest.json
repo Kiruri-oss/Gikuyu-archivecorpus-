@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "Gĩkũyũ Archive Corpus",
+  "short_name": "Gĩkũyũ Archive",
+  "description": "A growing digital corpus for Gĩkũyũ language, oral memory and research.",
+  "lang": "ki",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8f5ef",
+  "theme_color": "#3d2f1f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
