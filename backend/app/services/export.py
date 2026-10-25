@@ -3,7 +3,7 @@ import io
 import json
 from typing import AsyncIterator, Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.media import Media
@@ -12,6 +12,7 @@ from app.models.source import Source, SourceStatus
 from app.models.text_record import TextRecord
 
 ExportPurpose = Literal["research", "ai_training", "commercial"]
+LicenseFilter = Literal["cc0", "all_verified"]
 
 
 def _permission_filter(model, purpose: ExportPurpose):
@@ -20,6 +21,12 @@ def _permission_filter(model, purpose: ExportPurpose):
     if purpose == "commercial":
         return model.allow_commercial_use.is_(True)
     return model.allow_research_use.is_(True)
+
+
+def _license_filter(model, license_filter: LicenseFilter):
+    if license_filter == "cc0":
+        return func.lower(model.license).like("cc0%")
+    return true()
 
 
 def _license_url(source: Source) -> str:
@@ -42,13 +49,14 @@ def _source_metadata(source: Source) -> dict[str, str]:
 class ExportService:
     @staticmethod
     async def export_jsonl(
-        db: AsyncSession, dialect: str | None = None, purpose: ExportPurpose = "research"
+        db: AsyncSession, dialect: str | None = None, purpose: ExportPurpose = "research",
+        license_filter: LicenseFilter = "all_verified"
     ) -> AsyncIterator[str]:
         stmt = (
             select(Segment, Media, Source)
             .join(Media, Segment.media_id == Media.id)
             .join(Source, Media.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose))
+            .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose), _license_filter(Media, license_filter))
         )
         if dialect:
             stmt = stmt.where(Media.dialect == dialect)
@@ -76,7 +84,7 @@ class ExportService:
         text_stmt = (
             select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
+            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose), _license_filter(TextRecord, license_filter))
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
@@ -101,7 +109,8 @@ class ExportService:
 
     @staticmethod
     async def export_csv(
-        db: AsyncSession, dialect: str | None = None, purpose: ExportPurpose = "research"
+        db: AsyncSession, dialect: str | None = None, purpose: ExportPurpose = "research",
+        license_filter: LicenseFilter = "all_verified"
     ) -> str:
         buf = io.StringIO()
         writer = csv.writer(buf)
@@ -116,7 +125,7 @@ class ExportService:
             select(Segment, Media, Source)
             .join(Media, Segment.media_id == Media.id)
             .join(Source, Media.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose))
+            .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose), _license_filter(Media, license_filter))
         )
         if dialect:
             media_stmt = media_stmt.where(Media.dialect == dialect)
@@ -135,7 +144,7 @@ class ExportService:
         text_stmt = (
             select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
+            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose), _license_filter(TextRecord, license_filter))
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
