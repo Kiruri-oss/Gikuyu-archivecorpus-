@@ -79,6 +79,16 @@ class StorageService:
             logger.error("storage.upload_failed", bucket=bucket, key=key, error=str(exc))
             raise
 
+    def download_fileobj(self, bucket: str, key: str, fileobj: BinaryIO) -> None:
+        """Stream an object-store recording into a caller-owned file."""
+        try:
+            fileobj.seek(0)
+            self._client.download_fileobj(bucket, key, fileobj)
+            fileobj.seek(0)
+        except ClientError as exc:
+            logger.error("storage.download_failed", bucket=bucket, key=key, error=str(exc))
+            raise
+
     def delete(self, bucket: str, key: str) -> None:
         try:
             self._client.delete_object(Bucket=bucket, Key=key)
