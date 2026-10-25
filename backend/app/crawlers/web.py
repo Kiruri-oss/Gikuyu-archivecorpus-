@@ -16,8 +16,8 @@ RELEVANT_LINK_TERMS = (
     "story", "stories", "book", "books", "download", "zenodo", "huggingface",
     "commonvoice", "maseno", "africa", "african",
 )
-MAX_DISCOVERY_HOSTS = 40
-MAX_PAGES_PER_HOST = 30
+MAX_DISCOVERY_HOSTS = 100
+MAX_PAGES_PER_HOST = 50
 
 
 class WebCrawler(BaseCrawler):
