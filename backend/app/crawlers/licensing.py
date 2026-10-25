@@ -57,7 +57,7 @@ def detect_open_licence(html: str, page_url: str) -> OpenLicence | None:
         if is_rights_field:
             candidates.append((value.lower(), urljoin(page_url, href) if href else ""))
 
-    for selector in (".license", ".licence", "#license", "#licence", "[itemprop='license']", "[itemprop='copyrightNotice']"):
+    for selector in (".license", ".licence", "#license", "#licence", "[itemprop='license']"):
         for node in soup.select(selector):
             candidates.append((node.get_text(" ", strip=True).lower(), ""))
 
