@@ -1,18 +1,23 @@
 import Link from "next/link";
 
+const links = [
+  { href: "/search", label: "Explore" },
+  { href: "/about", label: "About" },
+  { href: "/contribute", label: "Contribute" },
+];
+
 export function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 border-b bg-white" aria-label="Main navigation">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 p-4">
-        <Link href="/" className="text-lg font-bold text-earth-900 sm:text-xl">
-          Gĩkũyũ Archive
+    <header className="sticky top-0 z-50 border-b border-gray-200/80 bg-white/95 backdrop-blur">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:py-4" aria-label="Main navigation">
+        <Link href="/" className="flex min-w-0 items-center gap-3 text-earth-900" aria-label="Gĩkũyũ Archive home">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-earth-900 text-lg font-bold text-white" aria-hidden="true">Gĩ</span>
+          <span className="min-w-0"><span className="block truncate text-base font-bold sm:text-lg">Gĩkũyũ Archive</span><span className="hidden text-xs text-gray-500 sm:block">Public-source discovery</span></span>
         </Link>
-        <div className="flex items-center gap-4 text-sm">
-          <Link href="/search" className="hover:text-earth-500">Search</Link>
-          <Link href="/contribute" className="hover:text-earth-500">Contribute</Link>
-          <Link href="/researcher" className="hover:text-earth-500">Research exports</Link>
+        <div className="flex shrink-0 items-center gap-3 text-sm sm:gap-6">
+          {links.map((link) => <Link key={link.href} href={link.href} className="font-medium text-gray-600 transition hover:text-earth-900">{link.label}</Link>)}
         </div>
-      </div>
-    </nav>
+      </nav>
+    </header>
   );
 }
