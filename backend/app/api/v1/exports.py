@@ -1,21 +1,40 @@
+from typing import Literal
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse, PlainTextResponse
 
-from app.core.deps import DbSession
-from app.services.export import export_service
+from app.core.deps import DbSession, ResearcherUser
+from app.services.export import export_service, ExportPurpose
 
 router = APIRouter(prefix="/exports", tags=["exports"])
 
 
 @router.get("/jsonl")
-async def export_jsonl(db: DbSession, dialect: str | None = None) -> StreamingResponse:
+async def export_jsonl(
+    db: DbSession,
+    _: ResearcherUser,
+    dialect: str | None = None,
+    purpose: Literal["research", "ai_training", "commercial"] = Query(default="research"),
+) -> StreamingResponse:
     async def stream():
-        async for line in export_service.export_jsonl(db, dialect):
+        async for line in export_service.export_jsonl(db, dialect, purpose):
             yield line
-    return StreamingResponse(stream(), media_type="application/x-ndjson")
+    return StreamingResponse(
+        stream(),
+        media_type="application/x-ndjson",
+        headers={"Content-Disposition": f'attachment; filename="gikuyu-archive-{purpose}.jsonl"'},
+    )
 
 
 @router.get("/csv")
-async def export_csv(db: DbSession, dialect: str | None = None) -> PlainTextResponse:
-    csv_data = await export_service.export_csv(db, dialect)
-    return PlainTextResponse(csv_data, media_type="text/csv")
+async def export_csv(
+    db: DbSession,
+    _: ResearcherUser,
+    dialect: str | None = None,
+    purpose: Literal["research", "ai_training", "commercial"] = Query(default="research"),
+) -> PlainTextResponse:
+    csv_data = await export_service.export_csv(db, dialect, purpose)
+    return PlainTextResponse(
+        csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="gikuyu-archive-{purpose}.csv"'},
+    )
