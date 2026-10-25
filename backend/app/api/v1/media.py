@@ -68,6 +68,8 @@ async def upload_media(
         raise HTTPException(status_code=422, detail="Confirm your right to contribute this recording and consent to its storage for review.")
     if not parsed.speaker_consent_confirmed:
         raise HTTPException(status_code=422, detail="Confirm that the speaker(s) consented to this recording and its submission.")
+    if not parsed.language_confirmed:
+        raise HTTPException(status_code=422, detail="Confirm that this recording contains Gĩkũyũ language material.")
 
     raw = await file.read()
     if len(raw) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
@@ -95,6 +97,7 @@ async def upload_media(
             "consent_to_archive": parsed.consent_to_archive,
             "rights_confirmed": parsed.confirm_rights,
             "speaker_consent_confirmed": parsed.speaker_consent_confirmed,
+            "language_confirmed": parsed.language_confirmed,
             "speaker_consent_recorded_at": datetime.now(timezone.utc).isoformat(),
         }),
     )
