@@ -64,25 +64,25 @@ class CrawlScheduler:
                         "review_required": True,
                     }, ensure_ascii=False),
                 )
-                db.add(source)
-                await db.flush()
-                record = TextRecord(
-                    source_id=source.id,
-                    title=item.get("title") or url,
-                    body=body,
-                    language_code="ki",
-                    sha256=digest,
-                    size_bytes=len(body.encode("utf-8")),
-                    lang_score=item["confidence"],
-                    license=item["license"],
-                    allow_public_display=True,
-                    allow_research_use=bool(item.get("permits_research")),
-                    allow_ai_training=bool(item.get("permits_ai_training")),
-                    allow_commercial_use=bool(item.get("permits_commercial_use")),
-                    notes="Automatically discovered. Source remains pending human review before public listing.",
-                )
-                db.add(record)
                 try:
+                    db.add(source)
+                    await db.flush()
+                    record = TextRecord(
+                        source_id=source.id,
+                        title=item.get("title") or url,
+                        body=body,
+                        language_code="ki",
+                        sha256=digest,
+                        size_bytes=len(body.encode("utf-8")),
+                        lang_score=item["confidence"],
+                        license=item["license"],
+                        allow_public_display=True,
+                        allow_research_use=bool(item.get("permits_research")),
+                        allow_ai_training=bool(item.get("permits_ai_training")),
+                        allow_commercial_use=bool(item.get("permits_commercial_use")),
+                        notes="Automatically discovered. Source remains pending human review before public listing.",
+                    )
+                    db.add(record)
                     await db.flush()
                     await db.commit()
                     created += 1
