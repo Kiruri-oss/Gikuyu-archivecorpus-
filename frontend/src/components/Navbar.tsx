@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const links = [
+  { href: "/languages", label: "Languages" },
   { href: "/search", label: "Explore" },
   { href: "/saved", label: "Saved" },
   { href: "/about", label: "About" },
@@ -13,7 +14,7 @@ export function Navbar() {
       <nav className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:py-4" aria-label="Main navigation">
         <Link href="/" className="flex min-w-0 items-center gap-3 text-earth-900" aria-label="Gĩkũyũ Archive home">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-earth-900 text-lg font-bold text-white" aria-hidden="true">Gĩ</span>
-          <span className="min-w-0"><span className="block truncate text-base font-bold sm:text-lg">Gĩkũyũ Archive</span><span className="hidden text-xs text-gray-500 sm:block">Public-source discovery</span></span>
+          <span className="min-w-0"><span className="block truncate text-base font-bold sm:text-lg">Gĩkũyũ Archive</span><span className="hidden text-xs text-gray-500 sm:block">African language library</span></span>
         </Link>
         <div className="flex shrink-0 items-center gap-2 text-xs sm:gap-5 sm:text-sm">
           {links.map((link) => <Link key={link.href} href={link.href} className="font-medium text-gray-600 transition hover:text-earth-900">{link.label}</Link>)}
