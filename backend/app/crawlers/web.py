@@ -2,7 +2,7 @@ from urllib.parse import urlparse
 
 from app.crawlers.base import BaseCrawler
 from app.core.logging import get_logger
-from app.crawlers.licensing import is_safe_http_url
+from app.crawlers.licensing import canonicalize_url, is_safe_http_url
 
 logger = get_logger(__name__)
 
@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 class WebCrawler(BaseCrawler):
     async def crawl(self, seed_urls: list[str], max_pages: int = 100) -> list[dict]:
         """Crawl only seeded hosts and return explicitly open-licensed Gĩkũyũ pages."""
-        safe_seeds = [url for url in seed_urls if is_safe_http_url(url)]
+        safe_seeds = [canonicalize_url(url) for url in seed_urls if is_safe_http_url(url)]
         allowed_hosts = {urlparse(url).hostname for url in safe_seeds}
         visited: set[str] = set()
         queue: list[str] = list(safe_seeds)
