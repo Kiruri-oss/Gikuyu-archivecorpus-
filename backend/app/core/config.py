@@ -6,7 +6,7 @@ from pydantic import PostgresDsn, RedisDsn, AnyHttpUrl
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    APP_NAME: str = "Gikuyu Language Archive"
+    APP_NAME: str = "Gikuyu Archive Corpus"
     APP_ENV: str = "development"
     DEBUG: bool = False
     SECRET_KEY: str
@@ -32,9 +32,23 @@ class Settings(BaseSettings):
     BACKEND_URL: AnyHttpUrl = "http://localhost:8000"
 
     CRAWLER_USER_AGENT: str = "GikuyuArchiveBot/1.0 (+https://gikuyu-archivecorpus.vercel.app/about)"
-    CRAWLER_SEED_URLS: str = "https://ki.wikipedia.org/wiki/Main_Page,https://ki.wiktionary.org/wiki/Main_Page,https://www.wikidata.org/wiki/Wikidata:Main_Page,https://opendata.go.ke/,https://archive.org/"
+    # Search/index pages are discovery entry points. The crawler follows only same-host
+    # links, checks robots.txt for each request, and stores content only when an explicit
+    # supported licence is found and the text is detected as Gĩkũyũ.
+    CRAWLER_SEED_URLS: str = (
+        "https://ki.wikipedia.org/wiki/Main_Page,"
+        "https://ki.wiktionary.org/wiki/Main_Page,"
+        "https://www.wikidata.org/w/index.php?search=Kikuyu&title=Special%3ASearch&ns0=1,"
+        "https://opendata.go.ke/,"
+        "https://archive.org/search?query=Kikuyu,"
+        "https://openlibrary.org/search?q=Kikuyu,"
+        "https://www.gutenberg.org/ebooks/search/?query=Kikuyu,"
+        "https://www.loc.gov/search/?q=Kikuyu,"
+        "https://commons.wikimedia.org/wiki/Category:Kikuyu_language"
+    )
     CRAWLER_RESPECT_ROBOTS: bool = True
     CRAWLER_MAX_CONCURRENCY: int = 5
+    CRAWLER_MIN_HOST_DELAY_SECONDS: float = 1.0
 
     LANGUAGE_DETECTION_THRESHOLD: float = 0.55
     MAX_UPLOAD_SIZE_MB: int = 500
