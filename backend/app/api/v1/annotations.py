@@ -39,6 +39,12 @@ async def create_annotation(
     segment = await db.get(Segment, segment_id)
     if not segment:
         raise HTTPException(status_code=404, detail="Segment not found")
+    media = await db.get(Media, segment.media_id)
+    if not media:
+        raise HTTPException(status_code=404, detail="Segment not found")
+    source = await db.get(Source, media.source_id)
+    if not source or (source.status != SourceStatus.APPROVED and not media.file_key.startswith(f"{user.id}/")):
+        raise HTTPException(status_code=404, detail="Segment not found")
 
     annotation = Annotation(
         segment_id=segment_id,
