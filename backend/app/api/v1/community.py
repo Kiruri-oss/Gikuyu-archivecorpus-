@@ -61,7 +61,7 @@ async def contributor_leaderboard(
             metadata = json.loads(raw_metadata or "{}")
             contributor_id = str(metadata.get("contributor_id") or "")
             uuid.UUID(contributor_id)
-        except (TypeError, ValueError, json.JSONDecodeError):
+        except (TypeError, ValueError, AttributeError, json.JSONDecodeError):
             continue
         counts.setdefault(contributor_id, {"texts": 0, "recordings": 0})
         counts[contributor_id]["recordings"] += 1
