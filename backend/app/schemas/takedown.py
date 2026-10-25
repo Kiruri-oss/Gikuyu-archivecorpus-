@@ -21,3 +21,4 @@ class TakedownRead(BaseModel):
     status: TakedownStatus
     created_at: datetime
     actioned_at: datetime | None
+    admin_notes: str | None = None
