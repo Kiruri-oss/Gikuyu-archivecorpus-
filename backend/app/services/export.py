@@ -22,6 +22,17 @@ def _permission_filter(model, purpose: ExportPurpose):
     return model.allow_research_use.is_(True)
 
 
+def _license_filter(model, license_filter: str | None):
+    if not license_filter or license_filter == "all":
+        return None
+    aliases = {
+        "CC0": ["CC0", "CC0 1.0"],
+        "CC-BY": ["CC-BY", "CC BY", "CC BY 4.0", "CC-BY-4.0", "CC-BY-3.0", "CC BY 3.0"],
+        "PUBLIC-DOMAIN": ["PUBLIC-DOMAIN", "Public domain", "public domain"],
+    }
+    return model.license.in_(aliases[license_filter]) if license_filter in aliases else model.license == license_filter
+
+
 def _license_url(source: Source) -> str:
     try:
         metadata = json.loads(source.raw_metadata or "{}")
@@ -42,16 +53,26 @@ def _source_metadata(source: Source) -> dict[str, str]:
 class ExportService:
     @staticmethod
     async def export_jsonl(
-        db: AsyncSession, dialect: str | None = None, purpose: ExportPurpose = "research"
+        db: AsyncSession,
+        dialect: str | None = None,
+        purpose: ExportPurpose = "research",
+        license_filter: str | None = None,
     ) -> AsyncIterator[str]:
         stmt = (
             select(Segment, Media, Source)
             .join(Media, Segment.media_id == Media.id)
             .join(Source, Media.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose))
+            .where(
+                Source.status == SourceStatus.APPROVED,
+                Media.allow_public_display.is_(True),
+                _permission_filter(Media, purpose),
+            )
         )
         if dialect:
             stmt = stmt.where(Media.dialect == dialect)
+        media_license_clause = _license_filter(Media, license_filter)
+        if media_license_clause is not None:
+            stmt = stmt.where(media_license_clause)
         result = await db.execute(stmt)
         for segment, media, source in result.all():
             yield json.dumps({
@@ -76,10 +97,17 @@ class ExportService:
         text_stmt = (
             select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
+            .where(
+                Source.status == SourceStatus.APPROVED,
+                TextRecord.allow_public_display.is_(True),
+                _permission_filter(TextRecord, purpose),
+            )
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
+        text_license_clause = _license_filter(TextRecord, license_filter)
+        if text_license_clause is not None:
+            text_stmt = text_stmt.where(text_license_clause)
         text_result = await db.execute(text_stmt)
         for record, source in text_result.all():
             yield json.dumps({
@@ -101,7 +129,10 @@ class ExportService:
 
     @staticmethod
     async def export_csv(
-        db: AsyncSession, dialect: str | None = None, purpose: ExportPurpose = "research"
+        db: AsyncSession,
+        dialect: str | None = None,
+        purpose: ExportPurpose = "research",
+        license_filter: str | None = None,
     ) -> str:
         buf = io.StringIO()
         writer = csv.writer(buf)
@@ -116,10 +147,17 @@ class ExportService:
             select(Segment, Media, Source)
             .join(Media, Segment.media_id == Media.id)
             .join(Source, Media.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True), _permission_filter(Media, purpose))
+            .where(
+                Source.status == SourceStatus.APPROVED,
+                Media.allow_public_display.is_(True),
+                _permission_filter(Media, purpose),
+            )
         )
         if dialect:
             media_stmt = media_stmt.where(Media.dialect == dialect)
+        media_license_clause = _license_filter(Media, license_filter)
+        if media_license_clause is not None:
+            media_stmt = media_stmt.where(media_license_clause)
         media_result = await db.execute(media_stmt)
         for segment, media, source in media_result.all():
             provenance = _source_metadata(source)
@@ -135,10 +173,17 @@ class ExportService:
         text_stmt = (
             select(TextRecord, Source)
             .join(Source, TextRecord.source_id == Source.id)
-            .where(Source.status == SourceStatus.APPROVED, TextRecord.allow_public_display.is_(True), _permission_filter(TextRecord, purpose))
+            .where(
+                Source.status == SourceStatus.APPROVED,
+                TextRecord.allow_public_display.is_(True),
+                _permission_filter(TextRecord, purpose),
+            )
         )
         if dialect:
             text_stmt = text_stmt.where(TextRecord.dialect == dialect)
+        text_license_clause = _license_filter(TextRecord, license_filter)
+        if text_license_clause is not None:
+            text_stmt = text_stmt.where(text_license_clause)
         text_result = await db.execute(text_stmt)
         for record, source in text_result.all():
             provenance = _source_metadata(source)
