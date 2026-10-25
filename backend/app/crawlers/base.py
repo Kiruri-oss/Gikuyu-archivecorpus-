@@ -1,4 +1,6 @@
 import asyncio
+import html as html_lib
+import io
 import socket
 import time
 from dataclasses import dataclass
@@ -8,6 +10,7 @@ from ipaddress import ip_address
 
 import httpx
 from bs4 import BeautifulSoup
+from pypdf import PdfReader
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
@@ -17,6 +20,8 @@ from app.services.language_detector import language_detector
 logger = get_logger(__name__)
 settings = get_settings()
 MAX_PAGE_BYTES = 5 * 1024 * 1024
+MAX_PDF_PAGES = 100
+MAX_EXTRACTED_TEXT_CHARS = 50000
 MAX_REDIRECTS = 5
 
 
@@ -142,6 +147,49 @@ class BaseCrawler:
         licence = detect_open_licence(html, base_url)
         return licence.name if licence else None
 
+    @staticmethod
+    def _pdf_to_html(payload: bytes, source_url: str) -> str | None:
+        """Extract bounded text from public PDFs so books and scanned reports enter discovery."""
+        try:
+            reader = PdfReader(io.BytesIO(payload), strict=False)
+            if reader.is_encrypted:
+                try:
+                    if not reader.decrypt(""):
+                        logger.info("crawler.encrypted_pdf_skipped", url=source_url)
+                        return None
+                except Exception:
+                    logger.info("crawler.encrypted_pdf_skipped", url=source_url)
+                    return None
+
+            chunks: list[str] = []
+            for page in reader.pages[:MAX_PDF_PAGES]:
+                try:
+                    extracted = page.extract_text() or ""
+                except Exception as exc:
+                    logger.warning("crawler.pdf_page_extract_failed", url=source_url, error=str(exc))
+                    continue
+                if extracted.strip():
+                    chunks.append(extracted.strip())
+            text = "\n\n".join(chunks)[:MAX_EXTRACTED_TEXT_CHARS]
+            if not text.strip():
+                logger.info("crawler.pdf_has_no_extractable_text", url=source_url)
+                return None
+
+            metadata = reader.metadata
+            title = str(getattr(metadata, "title", "") or "").strip()
+            if not title:
+                title = urlparse(source_url).path.rsplit("/", 1)[-1] or "PDF document"
+            return (
+                "<html><head><title>"
+                + html_lib.escape(title)
+                + "</title></head><body><pre>"
+                + html_lib.escape(text)
+                + "</pre></body></html>"
+            )
+        except Exception as exc:
+            logger.warning("crawler.pdf_parse_failed", url=source_url, error=str(exc))
+            return None
+
     async def fetch(self, url: str) -> tuple[str, str] | None:
         current_url = canonicalize_url(url) if is_safe_http_url(url) else url
         if not is_safe_http_url(current_url):
@@ -171,7 +219,14 @@ class BaseCrawler:
                                 logger.warning("crawler.http_error", url=current_url, status=response.status_code)
                                 return None
                             content_type = response.headers.get("content-type", "").lower()
-                            if content_type and not any(kind in content_type for kind in ("text/html", "application/xhtml+xml")):
+                            is_pdf = (
+                                "application/pdf" in content_type
+                                or urlparse(current_url).path.lower().endswith(".pdf")
+                            )
+                            if not is_pdf and content_type and not any(
+                                kind in content_type
+                                for kind in ("text/html", "application/xhtml+xml")
+                            ):
                                 logger.info("crawler.non_html_skipped", url=current_url, content_type=content_type)
                                 return None
                             length = response.headers.get("content-length")
@@ -186,8 +241,16 @@ class BaseCrawler:
                                     logger.warning("crawler.page_too_large", url=current_url, bytes=total)
                                     return None
                                 chunks.append(chunk)
+                            payload = b"".join(chunks)
+                            if is_pdf:
+                                document_html = await asyncio.to_thread(
+                                    self._pdf_to_html, payload, current_url
+                                )
+                                if document_html is None:
+                                    return None
+                                return document_html, current_url
                             encoding = response.encoding or "utf-8"
-                            html = b"".join(chunks).decode(encoding, errors="replace")
+                            html = payload.decode(encoding, errors="replace")
                             return html, current_url
                 except (httpx.HTTPError, UnicodeError, LookupError, ValueError) as exc:
                     logger.warning("crawler.fetch_failed", url=current_url, error=str(exc))
