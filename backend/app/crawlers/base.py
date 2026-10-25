@@ -1,4 +1,5 @@
 import asyncio
+import time
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
@@ -33,7 +34,7 @@ class CrawlResult:
 
 
 class BaseCrawler:
-    """Rights-first public web hunter with mandatory robots compliance."""
+    """Rights-aware public web hunter with mandatory robots and host-delay compliance."""
 
     def __init__(self) -> None:
         self.headers = {
@@ -43,10 +44,26 @@ class BaseCrawler:
         self.semaphore = asyncio.Semaphore(max(1, min(settings.CRAWLER_MAX_CONCURRENCY, 5)))
         self._robots: dict[str, RobotFileParser | None] = {}
         self._robots_lock = asyncio.Lock()
+        self._host_last_request: dict[str, float] = {}
+        self._host_delay_locks: dict[str, asyncio.Lock] = {}
 
     @staticmethod
     def _is_public_http_url(url: str) -> bool:
         return is_safe_http_url(url)
+
+    async def _respect_host_delay(self, url: str) -> None:
+        parsed = urlparse(url)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        lock = self._host_delay_locks.setdefault(origin, asyncio.Lock())
+        async with lock:
+            now = time.monotonic()
+            previous = self._host_last_request.get(origin)
+            minimum_delay = max(0.0, float(settings.CRAWLER_MIN_HOST_DELAY_SECONDS))
+            if previous is not None:
+                wait = minimum_delay - (now - previous)
+                if wait > 0:
+                    await asyncio.sleep(wait)
+            self._host_last_request[origin] = time.monotonic()
 
     async def can_fetch(self, url: str) -> bool:
         if not is_safe_http_url(url):
@@ -101,6 +118,7 @@ class BaseCrawler:
             for _ in range(MAX_REDIRECTS + 1):
                 if not is_safe_http_url(current_url) or not await self.can_fetch(current_url):
                     return None
+                await self._respect_host_delay(current_url)
                 try:
                     async with httpx.AsyncClient(timeout=20, follow_redirects=False, headers=self.headers) as client:
                         async with client.stream("GET", current_url) as response:
