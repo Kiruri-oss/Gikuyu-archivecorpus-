@@ -17,9 +17,9 @@ def _like_pattern(query: str) -> str:
 
 @router.get("")
 async def search(
+    db: DbSession,
     q: str = Query(min_length=2, max_length=200),
     limit: int = Query(default=20, ge=1, le=50),
-    db: DbSession = None,
 ) -> dict:
     """Search approved public corpus records directly in PostgreSQL.
 
