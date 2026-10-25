@@ -16,6 +16,8 @@ class TakedownRead(BaseModel):
     id: uuid.UUID
     url: str
     requester_name: str
+    requester_email: EmailStr
+    reason: str
     status: TakedownStatus
     created_at: datetime
     actioned_at: datetime | None
