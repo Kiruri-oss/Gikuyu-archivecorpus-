@@ -32,10 +32,14 @@ async def test_crawler_discovers_through_unlicensed_index_but_archives_only_lice
 
     results = await crawler.crawl(["https://example.org/"], max_pages=10)
 
-    assert len(results) == 1
-    assert results[0]["url"] == "https://example.org/licensed"
-    assert results[0]["license"] == "CC-BY"
-    assert results[0]["permits_ai_training"] is True
+    assert len(results) == 2
+    index = next(item for item in results if item["url"] == "https://example.org/")
+    licensed = next(item for item in results if item["url"] == "https://example.org/licensed")
+    assert index["archive_content"] is False
+    assert index["license"] == "UNVERIFIED"
+    assert licensed["archive_content"] is True
+    assert licensed["license"] == "CC-BY"
+    assert licensed["permits_ai_training"] is True
 
 
 @pytest.mark.asyncio
@@ -54,7 +58,11 @@ async def test_crawler_does_not_archive_cc_by_sa(monkeypatch):
     crawler = WebCrawler()
     monkeypatch.setattr(crawler, "fetch", fake_fetch)
     results = await crawler.crawl(["https://example.org/"], max_pages=1)
-    assert results == []
+    assert len(results) == 1
+    assert results[0]["url"] == "https://example.org/"
+    assert results[0]["archive_content"] is False
+    assert results[0]["text"] == ""
+    assert results[0]["license"] == "UNVERIFIED"
 
 
 @pytest.mark.asyncio
