@@ -23,6 +23,15 @@ class LanguageDetector:
         "ũhoro", "gũtirĩ", "mũthenya", "rĩrĩa", "ũcio", "ĩno", "ĩyo",
         "ndĩ", "nĩwe", "thutha", "gũcooka", "ũgĩ", "mũthenya",
     })
+    # Many online Gĩkũyũ sources omit the diacritics. These lexical markers
+    # allow the Hunter to find that material without treating generic syllables
+    # or English pages merely mentioning Kikuyu as Gĩkũyũ text.
+    KIKUYU_ASCII_MARKERS = frozenset({
+        "muthuri", "mutumia", "mucii", "ciana", "ngatho", "thayu",
+        "agikuyu", "mugikuyu", "mbari", "nduriri", "guthoma",
+        "gucooka", "ithui", "inyui", "athuri", "atumia", "mugumo",
+        "murata", "mugambo", "njamba", "gikuyu",
+    })
     SWAHILI_MARKERS = frozenset({
         "kwa", "hii", "hiyo", "sana", "kabisa", "yake", "watu", "habari",
         "ndiyo", "lakini", "mimi", "wewe", "sisi", "nyumba", "mtu",
@@ -56,15 +65,19 @@ class LanguageDetector:
             token for token in unique_tokens
             if token in self.KIKUYU_MARKERS or "ĩ" in token or "ũ" in token
         }
+        ascii_signals = unique_tokens & self.KIKUYU_ASCII_MARKERS
         sw_signals = unique_tokens & self.SWAHILI_MARKERS
         en_signals = unique_tokens & self.ENGLISH_MARKERS
         kik_hits = len(kik_signals)
-        total = kik_hits + len(sw_signals) + len(en_signals) + 1
-        kik_ratio = kik_hits / total
+        total = kik_hits + len(ascii_signals) + len(sw_signals) + len(en_signals) + 1
+        kik_ratio = (kik_hits + len(ascii_signals)) / total
 
-        # Require more than one independent signal to avoid labelling short,
-        # ambiguous words as Gĩkũyũ. A caller can send uncertain text for review.
+        # Diacritic-rich writing needs two independent signals; unmarked writing
+        # needs three lexical signals so an English page merely mentioning Kikuyu
+        # does not become a false-positive corpus record.
         if kik_hits >= 2 and kik_ratio >= settings.LANGUAGE_DETECTION_THRESHOLD:
+            return ("ki", round(kik_ratio, 4))
+        if len(ascii_signals) >= 3 and kik_ratio >= max(0.45, settings.LANGUAGE_DETECTION_THRESHOLD - 0.10):
             return ("ki", round(kik_ratio, 4))
 
         model = self._load_model()
