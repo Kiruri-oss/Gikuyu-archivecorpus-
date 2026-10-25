@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.core.config import get_settings
@@ -21,13 +21,14 @@ settings = get_settings()
 logger = get_logger(__name__)
 
 
-@router.post("", response_model=TakedownRead, status_code=201)
+@router.post("", response_model=TakedownRead, status_code=status.HTTP_201_CREATED)
 async def submit_takedown(payload: TakedownCreate, db: DbSession) -> TakedownRead:
+    """Accept a rights complaint for review without publishing the complainant's email."""
     takedown = Takedown(
-        url=payload.url,
-        requester_name=payload.requester_name,
-        requester_email=payload.requester_email,
-        reason=payload.reason,
+        url=payload.url.strip(),
+        requester_name=payload.requester_name.strip(),
+        requester_email=str(payload.requester_email).strip(),
+        reason=payload.reason.strip(),
     )
     db.add(takedown)
     await db.flush()
@@ -37,41 +38,28 @@ async def submit_takedown(payload: TakedownCreate, db: DbSession) -> TakedownRea
 @router.get("", response_model=list[TakedownRead])
 async def list_takedowns(db: DbSession, _: AdminUser) -> list[TakedownRead]:
     result = await db.execute(select(Takedown).order_by(Takedown.created_at.desc()))
-    return [TakedownRead.model_validate(t) for t in result.scalars().all()]
+    return [TakedownRead.model_validate(item) for item in result.scalars().all()]
 
 
 @router.post("/{takedown_id}/action", response_model=TakedownRead)
-async def action_takedown(takedown_id: uuid.UUID, db: DbSession, _: AdminUser) -> TakedownRead:
+async def action_takedown(
+    takedown_id: uuid.UUID, db: DbSession, _: AdminUser
+) -> TakedownRead:
+    """Hide and remove matching archive material, preserving the complaint audit trail."""
     takedown = await db.get(Takedown, takedown_id)
     if not takedown:
         raise HTTPException(status_code=404, detail="Takedown not found")
+    if takedown.status == TakedownStatus.ACTIONED:
+        return TakedownRead.model_validate(takedown)
 
-    source_result = await db.execute(select(Source).where(Source.url == takedown.url))
+    source_result = await db.execute(select(Source).where(Source.url == takedown.url.strip()))
     source = source_result.scalar_one_or_none()
-    if source:
-        # Hide the complete source before cleanup. Public endpoints filter on this
-        # state, so a failed search-index or object-store call cannot keep it listed.
-        source.status = SourceStatus.TAKEN_DOWN
-        await db.flush()
 
-        media_result = await db.execute(select(Media).where(Media.source_id == source.id))
-        for media in media_result.scalars().all():
-            segment_result = await db.execute(select(Segment.id).where(Segment.media_id == media.id))
-            for (segment_id,) in segment_result.all():
-                try:
-                    await search_index.delete_document("segments", str(segment_id))
-                except Exception as exc:
-                    logger.warning("takedown.segment_index_delete_failed", segment_id=str(segment_id), error=str(exc))
-            try:
-                storage_service.delete(settings.S3_BUCKET_AUDIO, media.file_key)
-            except Exception as exc:
-                # Keep the source hidden even if the object store is temporarily down.
-                logger.error("takedown.storage_delete_failed", media_id=str(media.id), error=str(exc))
-            try:
-                await search_index.delete_document("media", str(media.id))
-            except Exception as exc:
-                logger.warning("takedown.media_index_delete_failed", media_id=str(media.id), error=str(exc))
-            await db.delete(media)
+    if source:
+        # Persist the visibility block before touching external systems. If storage
+        # cleanup fails, public reads remain blocked and an administrator can retry.
+        source.status = SourceStatus.TAKEN_DOWN
+        await db.commit()
 
         text_result = await db.execute(select(TextRecord).where(TextRecord.source_id == source.id))
         for record in text_result.scalars().all():
@@ -80,6 +68,28 @@ async def action_takedown(takedown_id: uuid.UUID, db: DbSession, _: AdminUser) -
             except Exception as exc:
                 logger.warning("takedown.text_index_delete_failed", record_id=str(record.id), error=str(exc))
             await db.delete(record)
+
+        media_result = await db.execute(select(Media).where(Media.source_id == source.id))
+        for media in media_result.scalars().all():
+            segment_result = await db.execute(select(Segment).where(Segment.media_id == media.id))
+            for segment in segment_result.scalars().all():
+                try:
+                    await search_index.delete_document("segments", str(segment.id))
+                except Exception as exc:
+                    logger.warning("takedown.segment_index_delete_failed", segment_id=str(segment.id), error=str(exc))
+            try:
+                await search_index.delete_document("media", str(media.id))
+            except Exception as exc:
+                logger.warning("takedown.media_index_delete_failed", media_id=str(media.id), error=str(exc))
+            try:
+                storage_service.delete(settings.S3_BUCKET_AUDIO, media.file_key)
+            except Exception as exc:
+                logger.error("takedown.storage_delete_failed", media_id=str(media.id), error=str(exc))
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="The source is hidden, but media removal is incomplete. Retry the takedown action.",
+                ) from exc
+            await db.delete(media)
 
     takedown.status = TakedownStatus.ACTIONED
     takedown.actioned_at = datetime.now(timezone.utc)
