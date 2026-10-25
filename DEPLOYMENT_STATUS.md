@@ -4,7 +4,7 @@ Last reviewed: 25 October 2026
 
 ## Product objective
 
-Build the largest practical Gĩkũyũ (Kikuyu, ISO 639-3: kik) language library. This product is exclusively for Gĩkũyũ—not a multilingual directory or a general African-language platform. English-language pages may be supporting discovery references only, never substitute corpus material. The core product is a corpus: texts, oral recordings, transcripts, translations, annotations, reviewed sources and permissioned research datasets—not a search wrapper.
+Build the largest practical Gĩkũũ (Kikuyu, ISO 639-3: kik) language library. This product is exclusively for Gĩkũũ. Material in other languages is outside the corpus scope. The core product is a corpus: texts, oral recordings, transcripts, translations, annotations, reviewed sources and permissioned research datasets—not a search wrapper.
 
 ## Current live release
 
@@ -14,7 +14,7 @@ The orthography suggestion API and web UI are merged into the repository, but ar
 
 ## Implemented in the repository, not yet production-connected
 
-- A scheduled FastAPI corpus hunter that traverses only configured seed hosts, obeys robots.txt regardless of the legacy setting, bounds page size and redirects, rejects obvious private/local URL targets, and only extracts pages with explicit accepted open-licence evidence.
+- A scheduled FastAPI corpus hunter that traverses configured Gĩkũyũ discovery seeds, obeys robots.txt, enforces a per-host delay, bounds page size and redirects, rejects obvious private/local URL targets, and only extracts pages with explicit accepted open-licence evidence. The default catalogue includes Gĩkũyũ Wikimedia sources plus targeted discovery pages at Internet Archive, Open Library, Project Gutenberg, Library of Congress and Wikimedia Commons; each crawl is capped at 500 pages and scheduled every six hours when the backend runs in production.
 - Unlicensed pages may be used for link discovery only; their page text is not extracted into the archive.
 - Eligible Gĩkũyũ candidates are stored in the existing source/text models as pending records with source URL, licence declaration, discovery time, language confidence and reuse flags. Human review is required before public listing.
 - Source and content deduplication, configurable seed hosts and permission-aware research exports.
