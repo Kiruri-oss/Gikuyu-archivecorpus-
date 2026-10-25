@@ -88,6 +88,7 @@ async def search(
             .where(
                 TextRecord.id.in_(text_ids),
                 Source.status == SourceStatus.APPROVED,
+                TextRecord.language_code == "ki",
                 TextRecord.allow_public_display.is_(True),
             )
         )
