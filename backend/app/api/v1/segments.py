@@ -20,7 +20,7 @@ async def list_segments(media_id: uuid.UUID, db: DbSession) -> list[SegmentRead]
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
     source = await db.get(Source, media.source_id)
-    if not source or source.status != SourceStatus.APPROVED or not media.allow_public_display:
+    if not source or source.status != SourceStatus.APPROVED or media.language_code != "ki" or not media.allow_public_display:
         raise HTTPException(status_code=404, detail="Media not found")
     result = await db.execute(
         select(Segment).where(Segment.media_id == media_id).order_by(Segment.start_seconds)
@@ -37,7 +37,7 @@ async def create_segment(payload: SegmentCreate, db: DbSession, user: CurrentUse
         raise HTTPException(status_code=404, detail="Media not found")
     source = await db.get(Source, media.source_id)
     is_owner = media.file_key.startswith(f"{user.id}/")
-    if not source or (source.status != SourceStatus.APPROVED and not is_owner) or (source.status == SourceStatus.APPROVED and not media.allow_public_display):
+    if not source or media.language_code != "ki" or (source.status != SourceStatus.APPROVED and not is_owner) or (source.status == SourceStatus.APPROVED and not media.allow_public_display):
         raise HTTPException(status_code=409, detail="Only the contributor or an approved public record can be transcribed.")
 
     segment = Segment(
@@ -73,7 +73,7 @@ async def update_segment(segment_id: uuid.UUID, payload: SegmentUpdate, db: DbSe
         raise HTTPException(status_code=404, detail="Segment not found")
     media = await db.get(Media, segment.media_id)
     source = await db.get(Source, media.source_id) if media else None
-    if not media or not source:
+    if not media or not source or media.language_code != "ki":
         raise HTTPException(status_code=404, detail="Segment not found")
     is_owner = media.file_key.startswith(f"{user.id}/")
     is_reviewer = user.role.value in {"reviewer", "admin"}
