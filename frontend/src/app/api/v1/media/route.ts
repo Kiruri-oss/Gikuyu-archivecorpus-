@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchWikimedia } from "@/lib/wikimedia";
+import { getAfricanLanguage } from "@/lib/languages";
 
 export async function GET(request: NextRequest) {
   const limitParam = Number(request.nextUrl.searchParams.get("limit") ?? "30");
   const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(50, Math.floor(limitParam))) : 30;
-  const query = (request.nextUrl.searchParams.get("q") ?? "Gĩkũyũ OR Kikuyu").trim().slice(0, 120);
+  const languageCode = (request.nextUrl.searchParams.get("lang") ?? "ki").trim().toLowerCase();
+  const language = getAfricanLanguage(languageCode);
+  if (!language) return NextResponse.json({ detail: "Choose a supported language profile." }, { status: 400 });
+  const query = (request.nextUrl.searchParams.get("q") ?? language.searchTerms).trim().slice(0, 120);
   try {
-    const media = await searchWikimedia(query, limit);
+    const media = await searchWikimedia(query, limit, language.code);
     return NextResponse.json(media, {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     });
