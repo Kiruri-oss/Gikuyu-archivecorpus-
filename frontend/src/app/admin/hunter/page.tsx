@@ -18,6 +18,9 @@ type HunterStatus = {
   failed_at?: string;
   pages_discovered?: number;
   records_saved?: number;
+  video_sources_saved?: number;
+  visited_this_run?: number;
+  frontier_remaining?: number;
   page_budget?: number;
   error?: string;
 };
@@ -84,8 +87,11 @@ export default function AdminHunterPage() {
           ["Scheduled", status?.scheduled ? "Active" : "Not running"],
           ["Discovery seeds", status?.seed_count ?? "—"],
           ["Page budget", status?.page_budget ?? status?.default_page_budget ?? "—"],
-          ["Pages detected", status?.pages_discovered ?? "—"],
+          ["Gĩkũyũ pages found", status?.pages_discovered ?? "—"],
           ["Records saved", status?.records_saved ?? "—"],
+          ["Video sources queued", status?.video_sources_saved ?? "—"],
+          ["Pages visited this batch", status?.visited_this_run ?? "—"],
+          ["Frontier remaining", status?.frontier_remaining ?? "—"],
           ["Host limits", status ? `${status.max_discovery_hosts ?? "—"} hosts · ${status.max_pages_per_host ?? "—"} pages/host` : "—"],
         ].map(([label, value]) => <div key={String(label)} className="rounded-lg bg-gray-50 p-4"><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</dt><dd className="mt-2 font-semibold text-earth-900">{value}</dd></div>)}</dl>
         <div className="mt-5 space-y-1 text-sm text-gray-500">{status?.queued_at && <p>Queued: {new Date(status.queued_at).toLocaleString()}</p>}{status?.started_at && <p>Started: {new Date(status.started_at).toLocaleString()}</p>}{status?.completed_at && <p>Completed: {new Date(status.completed_at).toLocaleString()}</p>}{status?.failed_at && <p>Failed: {new Date(status.failed_at).toLocaleString()}</p>}</div>
