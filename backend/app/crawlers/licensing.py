@@ -7,7 +7,7 @@ Unknown or ambiguous pages are discovery-only and are not ingested.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 from ipaddress import ip_address
 
 from bs4 import BeautifulSoup
@@ -72,6 +72,17 @@ def detect_open_licence(html: str, page_url: str) -> OpenLicence | None:
                     permits_commercial_use=licence.permits_commercial_use,
                 )
     return None
+
+
+def canonicalize_url(url: str) -> str:
+    """Normalise URL identity for source and content deduplication."""
+    parsed = urlparse(url)
+    scheme = parsed.scheme.lower()
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if parsed.port and not ((scheme == "http" and parsed.port == 80) or (scheme == "https" and parsed.port == 443)):
+        host = f"{host}:{parsed.port}"
+    path = parsed.path or "/"
+    return urlunparse((scheme, host, path, "", parsed.query, ""))
 
 
 def is_safe_http_url(url: str) -> bool:
