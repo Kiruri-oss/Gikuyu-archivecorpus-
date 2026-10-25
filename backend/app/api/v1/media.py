@@ -45,7 +45,7 @@ async def list_media(
     limit: int = 50,
     offset: int = 0,
 ) -> list[MediaRead]:
-    stmt = select(Media).options(selectinload(Media.source)).join(Source, Media.source_id == Source.id).where(Source.status == SourceStatus.APPROVED, Media.allow_public_display.is_(True)).order_by(Media.created_at.desc()).limit(max(1, min(limit, 100))).offset(max(0, offset))
+    stmt = select(Media).options(selectinload(Media.source)).join(Source, Media.source_id == Source.id).where(Source.status == SourceStatus.APPROVED, Media.language_code == "ki", Media.allow_public_display.is_(True)).order_by(Media.created_at.desc()).limit(max(1, min(limit, 100))).offset(max(0, offset))
     if dialect:
         stmt = stmt.where(Media.dialect == dialect)
     if genre:
@@ -134,6 +134,7 @@ async def upload_media(
     media = Media(
         source_id=source.id,
         kind=MediaKind.AUDIO,
+        language_code=parsed.language_code,
         title=parsed.title,
         speaker=parsed.speaker,
         dialect=parsed.dialect,
