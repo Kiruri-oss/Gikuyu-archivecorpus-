@@ -42,6 +42,7 @@ async def test_text_submission_is_held_for_review_then_published(client, db_sess
         "allow_commercial_use": False,
         "consent_to_archive": True,
         "confirm_rights": True,
+        "language_confirmed": True,
     }
     submitted = await client.post("/api/v1/text-records", json=payload, headers=auth_headers)
     assert submitted.status_code == 201, submitted.text
@@ -82,6 +83,7 @@ async def test_text_submission_rejects_duplicate_content(client, auth_headers):
         "consent_to_archive": True,
         "consent_to_publish": True,
         "confirm_rights": True,
+        "language_confirmed": True,
     }
     first = await client.post("/api/v1/text-records", json=payload, headers=auth_headers)
     second = await client.post("/api/v1/text-records", json=payload, headers=auth_headers)
