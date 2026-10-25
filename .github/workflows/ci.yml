@@ -25,6 +25,10 @@ jobs:
         run: |
           npm install --package-lock-only --ignore-scripts
           npm ci
+      - name: Report dependency audit findings
+        run: |
+          npm audit --json > /tmp/npm-audit.json || true
+          node -e 'const fs=require("fs"); const a=JSON.parse(fs.readFileSync("/tmp/npm-audit.json","utf8")); for (const [name,v] of Object.entries(a.vulnerabilities||{})) { const via=(v.via||[]).map(x=>typeof x==="string"?x:x.title).join("; "); console.log(`${v.severity.toUpperCase()} ${name} | fix=${JSON.stringify(v.fixAvailable)} | ${via}`); }'
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
