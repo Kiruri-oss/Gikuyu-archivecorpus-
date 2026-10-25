@@ -58,7 +58,7 @@ export async function searchWikimedia(query: string, limit = 30): Promise<Media[
       county: null,
       genre: "Public reference",
       duration_seconds: null,
-      license: source.host === "en.wikipedia.org" ? "CC BY-SA (verify on source page)" : "Verify on source page",
+      license: "Check the source page for licence and reuse terms",
       lang_score: null,
       summary: (item.snippet ?? "").replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, "&"),
       source_url: `https://${source.host}/?curid=${item.pageid}`,
