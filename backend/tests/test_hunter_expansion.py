@@ -38,7 +38,7 @@ async def test_hunter_follows_relevant_cross_domain_links_and_keeps_unknown_righ
     assert all(item["permits_research"] is False for item in results)
     assert all(item["permits_ai_training"] is False for item in results)
     assert all(item["permits_commercial_use"] is False for item in results)
-    assert all(item["rights_state"] == "unknown_pending_rights_request" for item in results)
+    assert all(item["rights_state"] == "unknown_pending_rights_review" for item in results)
 
 
 @pytest.mark.asyncio
