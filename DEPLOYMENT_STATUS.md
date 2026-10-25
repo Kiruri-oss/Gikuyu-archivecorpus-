@@ -38,13 +38,13 @@ The Python FastAPI service under `backend/` is not connected to the Vercel deplo
 ## Security and dependencies
 
 - Next.js is pinned to 15.5.28 and React to 19.0.9.
-- The last previously verified dependency audit reported three moderate advisories in the Tailwind/PostCSS selector-parsing dependency chain and no high or critical findings. Recheck audit output on the latest CI run before making a current security claim.
+- The latest observed dependency audit reported three moderate advisories in the Tailwind/PostCSS selector-parsing dependency chain. No high or critical findings were reported in that audit; re-run the audit before making a current security claim.
 - The CI workflow was hardened to read-only repository permissions and now uses the committed lockfile with `npm ci`; it no longer commits files back to the main branch.
+- Vercel still reports some deprecated transitive build-tool packages. These warnings do not by themselves indicate a failed build, but should be addressed during dependency maintenance.
 
 ## Verification
 
-Previously verified:
-- GitHub Actions run `40229105184` passed 15 backend tests, frontend typecheck, lint, production build and local production-mode API smoke tests.
-- Vercel production deployment `dpl_38AMyttQE9Q1tht8DiSnb69qpGT1` reached `READY` for commit `80c7ab76d6179bf059def23e199441fa11a3d252`.
-
-Those checks predate the latest UI, policy-page and CI changes. The new commit must pass CI and Vercel deployment before the updated release can be considered verified. Direct public-site HTTP checks have not been independently run from this environment, whose outbound network access is restricted.
+- Vercel production deployment `dpl_3qiaMkNyVFwop3f3GNrBJRjP2ewv` reached `READY` for commit `965f90f8c37658cae77d0a096b4245edd9708efc`.
+- Its build logs confirm `npm ci`, successful Next.js compilation, lint/type validation and static generation of 19/19 pages.
+- GitHub Actions run `40229105184` previously passed 15 backend tests, frontend typecheck, lint, production build and local production-mode API smoke tests. That run predates the latest UI and CI changes, so it is not evidence that the complete current branch passed every CI job.
+- The public site's HTTP responses have not been independently verified from this environment because direct external requests are restricted. A successful Vercel build is not proof that every live route or third-party search is reachable from every network.
