@@ -30,7 +30,15 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(async () => {
+      fetch(request).then(async (response) => {
+        if (response.ok && response.type === "basic") {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, response.clone());
+        }
+        return response;
+      }).catch(async () => {
+        const cachedPage = await caches.match(request);
+        if (cachedPage) return cachedPage;
         const offline = await caches.match("/offline.html");
         return offline || new Response("Gĩkũyũ Archive is offline.", {
           status: 503,
