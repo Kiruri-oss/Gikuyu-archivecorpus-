@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from jose import JWTError, jwt
@@ -35,6 +36,17 @@ def create_refresh_token(subject: str) -> str:
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
+def parse_user_id(subject: object) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(subject))
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token subject",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -54,7 +66,7 @@ async def get_current_user(
     if payload.get("type") != "access":
         raise HTTPException(status_code=401, detail="Invalid token type")
 
-    user_id = payload.get("sub")
+    user_id = parse_user_id(payload.get("sub"))
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")

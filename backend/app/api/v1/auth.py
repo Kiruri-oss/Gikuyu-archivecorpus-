@@ -8,6 +8,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    parse_user_id,
 )
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, LoginRequest, TokenPair
@@ -54,7 +55,8 @@ async def refresh(refresh_token: str, db: DbSession) -> TokenPair:
     payload = decode_token(refresh_token)
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
-    user = await db.get(User, payload["sub"])
+    user_id = parse_user_id(payload.get("sub"))
+    user = await db.get(User, user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User unavailable")
     return TokenPair(

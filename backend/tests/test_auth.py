@@ -1,5 +1,7 @@
 import pytest
 
+from app.core.security import create_access_token, create_refresh_token
+
 
 @pytest.mark.asyncio
 async def test_register_creates_user(client):
@@ -42,3 +44,19 @@ async def test_login_rejects_bad_password(client, contributor):
         "password": "wrong",
     })
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_current_user_rejects_malformed_uuid_subject(client):
+    token = create_access_token("not-a-uuid", "contributor")
+    response = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid token subject"
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_uses_uuid_subject(client, contributor):
+    token = create_refresh_token(str(contributor.id))
+    response = await client.post("/api/v1/auth/refresh", params={"refresh_token": token})
+    assert response.status_code == 200
+    assert "access_token" in response.json()
