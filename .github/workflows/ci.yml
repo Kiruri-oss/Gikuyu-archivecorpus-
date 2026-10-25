@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [main]
@@ -59,6 +62,18 @@ jobs:
           valid_status=$(curl --silent --output /tmp/gikuyu-search.json --write-out "%{http_code}" --max-time 20 "http://127.0.0.1:3000/api/v1/search?q=Gikuyu")
           test "$valid_status" = "200"
           node -e 'const fs=require("fs"); const d=JSON.parse(fs.readFileSync("/tmp/gikuyu-search.json","utf8")); if(!Array.isArray(d.media) || d.media.length===0) { console.error(d); process.exit(1); }'
+      - name: Commit generated frontend lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/package-lock.json
+          if git diff --cached --quiet; then
+            echo "Frontend lockfile is already current."
+            exit 0
+          fi
+          git commit -m "Add deterministic frontend package lockfile"
+          git push origin HEAD:main
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
