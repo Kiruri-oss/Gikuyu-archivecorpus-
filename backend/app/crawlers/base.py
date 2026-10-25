@@ -1,8 +1,10 @@
 import asyncio
+import socket
 import time
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
+from ipaddress import ip_address
 
 import httpx
 from bs4 import BeautifulSoup
@@ -51,6 +53,36 @@ class BaseCrawler:
     def _is_public_http_url(url: str) -> bool:
         return is_safe_http_url(url)
 
+    async def _has_public_dns_target(self, url: str) -> bool:
+        """Reject public-looking hostnames that resolve to private or special IPs."""
+        parsed = urlparse(url)
+        host = parsed.hostname
+        if not host:
+            return False
+        try:
+            return ip_address(host).is_global
+        except ValueError:
+            pass
+        try:
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            answers = await asyncio.get_running_loop().getaddrinfo(
+                host, port, type=socket.SOCK_STREAM
+            )
+        except (OSError, asyncio.TimeoutError, socket.gaierror) as exc:
+            logger.warning("crawler.dns_resolution_failed", host=host, error=str(exc))
+            return False
+        addresses = {answer[4][0].split("%", 1)[0] for answer in answers}
+        if not addresses:
+            return False
+        for address in addresses:
+            try:
+                if not ip_address(address).is_global:
+                    logger.warning("crawler.private_dns_target_blocked", host=host, address=address)
+                    return False
+            except ValueError:
+                return False
+        return True
+
     async def _respect_host_delay(self, url: str) -> None:
         parsed = urlparse(url)
         origin = f"{parsed.scheme}://{parsed.netloc}"
@@ -68,6 +100,9 @@ class BaseCrawler:
     async def can_fetch(self, url: str) -> bool:
         if not is_safe_http_url(url):
             logger.warning("crawler.url_rejected", url=url, reason="unsafe_url")
+            return False
+        if not await self._has_public_dns_target(url):
+            logger.warning("crawler.url_rejected", url=url, reason="non_public_dns_target")
             return False
 
         parsed = urlparse(url)
