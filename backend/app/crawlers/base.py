@@ -132,7 +132,7 @@ class BaseCrawler:
 
         title = (soup.title.string or "").strip() if soup.title else ""
         body = soup.get_text(separator=" ", strip=True)
-        if len(body) < 100 or not licence:
+        if len(body) < 100:
             return None
 
         lang, score = language_detector.detect(body)
@@ -148,9 +148,9 @@ class BaseCrawler:
             language=lang,
             confidence=score,
             links=list(dict.fromkeys(links))[:100],
-            license=licence.name,
-            license_url=licence.url or None,
-            permits_research=licence.permits_research,
-            permits_ai_training=licence.permits_ai_training,
-            permits_commercial_use=licence.permits_commercial_use,
+            license=licence.name if licence else None,
+            license_url=(licence.url or None) if licence else None,
+            permits_research=licence.permits_research if licence else False,
+            permits_ai_training=licence.permits_ai_training if licence else False,
+            permits_commercial_use=licence.permits_commercial_use if licence else False,
         )
