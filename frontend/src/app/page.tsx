@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const features = [
   { number: "01", title: "Discover", text: "Search public reference pages for Gĩkũyũ words, language topics and related knowledge." },
-  { number: "02", title: "Follow the source", text: "Open the original publisher's page to review its context, licence and reuse terms." },
+  { number: "02", title: "Follow the source", text: "Open the original publisher&apos;s page to review its context, licence and reuse terms." },
   { number: "03", title: "Preserve responsibly", text: "Help shape a future community archive built around consent, attribution and respect for cultural knowledge." },
 ];
 
@@ -29,7 +29,7 @@ export default function HomePage() {
         <div className="space-y-2"><h2 className="text-xl font-semibold text-earth-900">A transparent beginning</h2><p className="max-w-3xl leading-7 text-gray-700">This live version is a public-source discovery tool. It does not yet store community recordings, transcripts, accounts or research datasets. We will not invite contributions until storage, consent, security and deletion controls are ready.</p></div>
         <Link href="/contribute" className="inline-flex justify-center rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900 hover:bg-white">Contribution status</Link>
       </section>
-      <section className="space-y-3 text-sm leading-6 text-gray-500"><p>Public references are not automatically cleared for redistribution or AI training. Always review the original source's current licence and terms.</p><p>Gĩkũyũ language materials can contain personal, sacred or community-restricted knowledge. Responsible preservation requires more than collecting files.</p></section>
+      <section className="space-y-3 text-sm leading-6 text-gray-500"><p>Public references are not automatically cleared for redistribution or AI training. Always review the original source&apos;s current licence and terms.</p><p>Gĩkũyũ language materials can contain personal, sacred or community-restricted knowledge. Responsible preservation requires more than collecting files.</p></section>
     </div>
   );
 }
