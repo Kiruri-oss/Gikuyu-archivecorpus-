@@ -10,6 +10,7 @@ from app.api.v1 import (
     search,
     exports,
     takedowns,
+    text_records,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -22,3 +23,4 @@ api_router.include_router(submissions.router)
 api_router.include_router(search.router)
 api_router.include_router(exports.router)
 api_router.include_router(takedowns.router)
+api_router.include_router(text_records.router)
