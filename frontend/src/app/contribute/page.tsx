@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 
-const backendConfigured = Boolean(process.env.NEXT_PUBLIC_API_URL);
-
 type TextResponse = { id: string; review_status?: string; message?: string };
 type AudioResponse = { id: string; review_status?: string; message?: string };
 
@@ -40,8 +38,8 @@ export default function ContributePage() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     resetMessages();
-    if (!backendConfigured) {
-      setError("The production archive API is not connected yet. Nothing has been submitted or stored.");
+    if (kind === "audio" && !process.env.NEXT_PUBLIC_API_URL) {
+      setError("Audio files must upload directly to the archive API. Configure NEXT_PUBLIC_API_URL before submitting audio; nothing has been uploaded.");
       return;
     }
     if (!archiveConsent || !rightsConfirmed) {
