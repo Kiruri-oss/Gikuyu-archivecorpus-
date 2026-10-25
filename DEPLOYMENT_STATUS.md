@@ -24,6 +24,17 @@ The orthography suggestion API and web UI are merged into the repository, but ar
 
 The hunter accepts explicit CC0, attribution-only CC BY 3.0/4.0, dedicated public-domain declarations and an explicit Kenya Open Data licence declaration. ShareAlike, NonCommercial, unknown and ambiguous licence evidence is not accepted for automatic ingestion. A site being governmental, old or publicly accessible is not by itself proof of reuse rights.
 
+## Additional implementation in the current repository
+
+- The Hunter's default seed catalogue now includes targeted Gĩkũyũ discovery entry points at the Gĩkũyũ Wikimedia projects, Internet Archive, Open Library, Project Gutenberg, Library of Congress, Wikimedia Commons and Wikidata. It is configured for a maximum of 500 pages per crawl every six hours, with a one-second minimum delay between requests to the same host. This is code configuration only; no production crawl has been verified.
+- Gĩkũyũ detection now relies on distinctive orthography and vocabulary rather than generic syllables such as “na”, with regression tests for Gĩkũyũ, Kiswahili, English and ambiguous short text.
+- Text contribution validation rejects non-Gĩkũyũ language codes. Audio contribution requires both an explicit Gĩkũyũ-language declaration and speaker-consent confirmation; the backend stores the consent declaration and timestamp in source metadata.
+- Contributor sign-in/registration pages, text/audio submission forms, a takedown request form, and a researcher portal have been added. They deliberately disable submission/export when the frontend has no configured backend URL.
+- Research exports now support a CC0-only filter in addition to approved records whose permissions match the selected research, AI-training or commercial purpose.
+- Search is prepared to show archived text, audio and transcript results when the frontend API URL points to the backend. Without that setting, it remains in public-reference discovery mode.
+
+These changes have been committed to the repository, but the new checks have not yet been confirmed green. The latest combined GitHub status only reports Vercel's build-rate-limit failure; the production site has not been verified to include these changes.
+
 ## Still not production-enabled
 
 - The FastAPI service is not connected to the Vercel frontend.
