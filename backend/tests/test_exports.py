@@ -75,3 +75,57 @@ async def test_exports_require_role_and_only_include_explicitly_permitted_record
 
     forbidden = await client.get("/api/v1/exports/jsonl", headers=auth_headers)
     assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_export_license_filter_returns_only_matching_permitted_records(db_session):
+    from app.models.source import Source, SourceStatus, SourceType
+    from app.models.text_record import TextRecord
+    from app.services.export import export_service
+
+    source = Source(
+        url="test://license-filter",
+        domain="test",
+        source_type=SourceType.USER_UPLOAD,
+        status=SourceStatus.APPROVED,
+    )
+    db_session.add(source)
+    await db_session.flush()
+    db_session.add_all([
+        TextRecord(
+            source_id=source.id,
+            title="CC0 proverb",
+            body="Mũciĩ nĩ wa andũ.",
+            language_code="ki",
+            sha256=uuid.uuid4().hex,
+            license="CC0",
+            allow_public_display=True,
+            allow_research_use=True,
+            allow_ai_training=True,
+        ),
+        TextRecord(
+            source_id=source.id,
+            title="CC BY proverb",
+            body="Ũhoro wa tene.",
+            language_code="ki",
+            sha256=uuid.uuid4().hex,
+            license="CC BY 4.0",
+            allow_public_display=True,
+            allow_research_use=True,
+            allow_ai_training=True,
+        ),
+    ])
+    await db_session.commit()
+
+    lines = [line async for line in export_service.export_jsonl(
+        db_session, purpose="ai_training", license_filter="CC0"
+    )]
+    assert len(lines) == 1
+    assert '"title": "CC0 proverb"' in lines[0]
+    assert '"license": "CC0"' in lines[0]
+
+    csv_data = await export_service.export_csv(
+        db_session, purpose="ai_training", license_filter="CC0"
+    )
+    assert "CC0 proverb" in csv_data
+    assert "CC BY proverb" not in csv_data
