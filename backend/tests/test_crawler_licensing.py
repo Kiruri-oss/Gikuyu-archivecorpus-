@@ -64,3 +64,12 @@ def test_accepts_public_https_url():
 
 def test_canonicalize_url_removes_fragment_and_default_port():
     assert canonicalize_url("HTTPS://Example.ORG:443/path?q=1#section") == "https://example.org/path?q=1"
+
+
+def test_rejects_lookalike_creative_commons_url():
+    html = """
+    <html><head><link rel="license"
+    href="https://attacker.example/creativecommons.org/licenses/by/4.0/"></head>
+    <body><p>Sample language material.</p></body></html>
+    """
+    assert detect_open_licence(html, "https://example.org/text") is None
