@@ -4,6 +4,7 @@ const links = [
   { href: "/languages", label: "The Corpus" },
   { href: "/search", label: "Explore" },
   { href: "/orthography", label: "Orthography" },
+  { href: "/transcribe", label: "Transcribe" },
   { href: "/contribute", label: "Contribute" },
   { href: "/login", label: "Account" },
 ];
@@ -16,7 +17,7 @@ export function Navbar() {
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-earth-900 text-lg font-bold text-white" aria-hidden="true">Gĩ</span>
           <span className="min-w-0"><span className="block truncate text-base font-bold sm:text-lg">Gĩkũyũ Archive</span><span className="hidden text-xs text-gray-500 sm:block">Gĩkũyũ language corpus</span></span>
         </Link>
-        <div className="flex shrink-0 items-center gap-2 text-xs sm:gap-5 sm:text-sm">
+        <div className="flex max-w-[64vw] shrink-0 gap-3 overflow-x-auto whitespace-nowrap text-xs sm:max-w-none sm:gap-5 sm:overflow-visible sm:text-sm">
           {links.map((link) => <Link key={link.href} href={link.href} className="font-medium text-gray-600 transition hover:text-earth-900">{link.label}</Link>)}
         </div>
       </nav>
