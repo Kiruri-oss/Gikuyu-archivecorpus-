@@ -6,7 +6,7 @@ from pydantic import PostgresDsn, RedisDsn, AnyHttpUrl
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    APP_NAME: str = "Gikuyu Language Archive"
+    APP_NAME: str = "Gikuyu Archive Corpus"
     APP_ENV: str = "development"
     DEBUG: bool = False
     SECRET_KEY: str
@@ -32,9 +32,27 @@ class Settings(BaseSettings):
     BACKEND_URL: AnyHttpUrl = "http://localhost:8000"
 
     CRAWLER_USER_AGENT: str = "GikuyuArchiveBot/1.0 (+https://gikuyu-archivecorpus.vercel.app/about)"
-    CRAWLER_SEED_URLS: str = "https://ki.wikipedia.org/wiki/Main_Page,https://ki.wiktionary.org/wiki/Main_Page,https://www.wikidata.org/wiki/Wikidata:Main_Page,https://opendata.go.ke/,https://archive.org/"
+    # Start from Gĩkũyũ references and major public catalogue/search surfaces.
+    # The hunter follows outbound references with a bounded domain/page budget.
+    CRAWLER_SEED_URLS: str = (
+        "https://ki.wikipedia.org/wiki/Main_Page,"
+        "https://ki.wiktionary.org/wiki/Main_Page,"
+        "https://commons.wikimedia.org/wiki/Category:Kikuyu_language,"
+        "https://wikisource.org/wiki/Special:Search?search=Kikuyu,"
+        "https://archive.org/search?query=%28title%3Akikuyu+OR+subject%3Akikuyu+OR+description%3Agikuyu%29,"
+        "https://openlibrary.org/search?q=kikuyu,"
+        "https://www.gutenberg.org/ebooks/search/?query=kikuyu,"
+        "https://www.europeana.eu/en/search?query=kikuyu,"
+        "https://openverse.org/search/?q=kikuyu,"
+        "https://www.loc.gov/search/?q=kikuyu,"
+        "https://www.wikidata.org/w/index.php?search=Kikuyu,"
+        "https://opendata.go.ke/"
+    )
     CRAWLER_RESPECT_ROBOTS: bool = True
     CRAWLER_MAX_CONCURRENCY: int = 5
+    CRAWLER_MAX_PAGES: int = 250
+    CRAWLER_MAX_DOMAINS: int = 75
+    CRAWLER_MAX_PAGES_PER_DOMAIN: int = 12
 
     LANGUAGE_DETECTION_THRESHOLD: float = 0.55
     MAX_UPLOAD_SIZE_MB: int = 500
