@@ -38,7 +38,8 @@ async def submit_takedown(payload: TakedownCreate, db: DbSession) -> TakedownRea
     source = source_result.scalar_one_or_none()
     if source and source.status == SourceStatus.APPROVED:
         source.status = SourceStatus.PENDING
-        source.reviewer_notes = f"Temporarily hidden while takedown request {takedown.id} is reviewed."
+        previous_notes = source.reviewer_notes or ""
+        source.reviewer_notes = f"[takedown hold] {previous_notes}".rstrip()
         await db.flush()
 
     return TakedownRead.model_validate(takedown)
@@ -136,13 +137,15 @@ async def reject_takedown(takedown_id: uuid.UUID, db: DbSession, _: AdminUser) -
         raise HTTPException(status_code=404, detail="Takedown not found")
     if takedown.status == TakedownStatus.ACTIONED:
         raise HTTPException(status_code=409, detail="An actioned removal cannot be rejected; restore the source through a separate review.")
+    if takedown.status == TakedownStatus.UNDER_REVIEW and (takedown.admin_notes or "").startswith("Source hidden. External cleanup remains incomplete"):
+        raise HTTPException(status_code=409, detail="External cleanup is incomplete. Retry the removal action instead of rejecting the request.")
 
     source_result = await db.execute(select(Source).where(Source.url == takedown.url))
     source = source_result.scalar_one_or_none()
     if (
         source
         and source.status == SourceStatus.PENDING
-        and source.reviewer_notes == f"Temporarily hidden while takedown request {takedown.id} is reviewed."
+        and (source.reviewer_notes or "").startswith("[takedown hold]")
     ):
         other_requests = await db.execute(
             select(Takedown.id).where(
@@ -153,7 +156,7 @@ async def reject_takedown(takedown_id: uuid.UUID, db: DbSession, _: AdminUser) -
         )
         if other_requests.first() is None:
             source.status = SourceStatus.APPROVED
-            source.reviewer_notes = "Takedown request rejected after review; source restored."
+            source.reviewer_notes = (source.reviewer_notes or "")[len("[takedown hold]"):].lstrip() or None
 
     takedown.status = TakedownStatus.REJECTED
     takedown.actioned_at = datetime.now(timezone.utc)
