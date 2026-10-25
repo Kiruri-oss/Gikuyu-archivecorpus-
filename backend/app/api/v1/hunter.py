@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.deps import AdminUser
+from app.core.config import get_settings
 from app.crawlers.scheduler import SEED_URLS, crawl_scheduler
 
 router = APIRouter(prefix="/hunter", tags=["Gĩkũyũ corpus hunter"])
@@ -13,6 +14,8 @@ async def hunter_status(_: AdminUser) -> dict[str, object]:
         **crawl_scheduler.last_run,
         "scheduled": crawl_scheduler.scheduler.running,
         "seed_count": len(SEED_URLS),
+        "default_page_budget": get_settings().CRAWLER_MAX_PAGES,
+        "domain_budget": get_settings().CRAWLER_MAX_DOMAINS,
         "max_pages_per_run": 1000,
     }
 
