@@ -4,46 +4,46 @@ Last reviewed: 25 October 2026
 
 ## Product objective
 
-Build the largest practical Gĩkũyũ language library and grow the underlying platform into a major African language library. The long-term product includes persistent language profiles, texts, oral recordings, transcripts, translations, annotations, reviewer workflows and permissioned datasets for language research and AI.
+Build the largest practical Gĩkũyũ language library and grow the underlying platform into a major African language library. The core product is a corpus: texts, oral recordings, transcripts, translations, annotations, reviewed sources and permissioned research datasets—not a language-directory demo.
 
-## Product direction
+## Current public release
 
-The primary product is a Gĩkũyũ archive corpus. The African-language directory is secondary and intended for later expansion; it must not replace the corpus, contributor, transcription, annotation and research workflows.
+The deployed frontend currently offers Gĩkũyũ-focused public-reference discovery, source detail pages, device-local saved references, and project/privacy/source-concern information. Search results point to their original publishers; they are not records stored by this project. A small orthography suggestion tool is being added in the current engineering branch, but it is not live until that branch is merged and successfully deployed.
 
-## Current web release
+## Implemented in the repository, not yet production-connected
 
-The latest code adds an initial directory of 20 African language profiles and language-aware public-reference search. It searches the selected language's Wikipedia and English Wikipedia; the Kikuyu search also checks Kikuyu Wiktionary. Search results remain third-party references and are not records stored by this project. Coverage varies by source and language.
+- A scheduled FastAPI corpus hunter that traverses only configured seed hosts, obeys robots.txt, bounds page size and redirects, rejects obvious private/local URL targets, and only extracts pages with explicit accepted open-licence evidence.
+- Unlicensed pages may be used for link discovery only; their page text is not extracted into the archive.
+- Eligible Gĩkũyũ candidates are stored in the existing source/text models as pending records with source URL, licence declaration, discovery time, language confidence and reuse flags. Human review is required before public listing.
+- Source and content deduplication, configurable seed hosts and permission-aware research exports.
+- CSV export now selects the source row correctly and includes source URL, discovery time and licence URL; JSONL exports preserve the same provenance.
+- A conservative orthography suggestion API and web tool for a small initial set of spellings such as `mucii → mũciĩ`. Suggestions are not silently applied or saved and must be confirmed by fluent speakers.
 
-Other web features include device-local saved references, source detail pages, About/Privacy/Source Concerns pages, same-origin API routes with input validation and outbound timeouts, and a health endpoint.
+The hunter accepts explicit CC0, attribution-only CC BY 3.0/4.0, dedicated public-domain declarations and an explicit Kenya Open Data licence declaration. ShareAlike, NonCommercial, unknown and ambiguous licence evidence is not accepted for automatic ingestion. A site being governmental, old or publicly accessible is not by itself proof of reuse rights.
 
-## Not yet enabled in the deployed frontend
+## Still not production-enabled
 
-- Persistent archive database and private object storage.
-- Contributor accounts, access control and identity lifecycle.
-- Audio uploads and storage, text contribution forms, time-aligned transcription and annotation workflows.
-- Review queues, private takedown intake and auditable moderation.
-- Licence-aware CSV/JSONL corpus exports and dataset cards.
-- Production backups, restore tests, monitoring and full end-to-end testing against provisioned services.
+- The FastAPI service is not connected to the Vercel frontend.
+- Persistent production database, private object storage, Redis and Meilisearch configuration are not provisioned for the live deployment.
+- Contributor accounts, secure audio uploads, consent recording, time-aligned transcription/annotation UI and moderation workflows are not connected to a production archive.
+- Production backups, restore tests, alerts and full end-to-end tests against provisioned services remain outstanding.
 
-The Python FastAPI backend contains groundwork for authentication, media upload, transcript segments, reviewer verification and exports but is not connected to Vercel. It expects database, Redis, S3-compatible storage, Meilisearch and secret configuration. Do not claim community contributions are being stored by the current live site.
-
-## Hunter code added, not yet live
-
-The backend hunter now checks robots.txt, rejects obvious private/local URL targets, requires an identifiable supported open licence before extracting page content, and saves eligible Gĩkũyũ candidates as pending source/text records. Unlicensed pages may be traversed for links only; their text is not stored. AI-training and commercial-use permissions default to false. This code is in the repository, but the FastAPI service is not deployed or verified in production.
+The crawler has not been run against a production database. No community submission should be described as stored until the backend and persistent services are deployed and tested. No paid service or production credential was created.
 
 ## Rights and data governance
 
-Public-source discovery does not grant redistribution or AI-training rights. Each record in the future corpus should carry source provenance, licence, consent/use permissions, language/dialect metadata and review state. Sensitive community knowledge requires an access policy; user data must be deletable; commercial or AI-training use must be explicit in contributor terms.
+Public-source discovery does not grant redistribution or AI-training rights. Every archived record must retain its source, licence evidence, attribution, discovery time, dialect metadata and review state. CC0/CC BY candidates carry the reuse flags implied by those licences but remain pending review; Kenya open-data candidates default to research-only until their terms are reviewed. Contributor recordings must have explicit permission and consent before ingestion. Takedown requests require an auditable, tested workflow before any removal-time guarantee is advertised.
 
 ## Security and dependencies
 
 - Frontend uses a committed lockfile and `npm ci`.
 - GitHub Actions repository permissions are read-only.
-- The latest previously observed dependency audit reported three moderate advisories in the Tailwind/PostCSS selector-parsing dependency chain. Re-run the audit before making a current claim.
+- The latest previously observed dependency audit reported three moderate advisories in the Tailwind/PostCSS selector-parsing dependency chain. Re-run the audit before making a current security claim.
+- The crawler enforces robots.txt even if the legacy configuration flag is disabled.
 - No production secrets or paid services were created as part of this work.
 
-## Verification
+## Verification and deployment
 
-Previously, the project passed backend unit tests, frontend typecheck/lint/build and local production-mode API smoke tests. That earlier run predates the latest multilingual directory changes. Recent Vercel status checks report a build-rate-limit restriction. The newest source commits are not confirmed deployed. The latest backend tests and frontend checks must be verified against these exact commits before claiming a clean release.
+The last completed branch run before the current merge-with-main check passed 36 backend tests, frontend typecheck, lint, production build and local production-mode API smoke tests. The current branch adds the orthography UI smoke test and is being checked again; consult GitHub Actions for the exact latest result.
 
-Direct public-site HTTP testing is restricted from the current environment. A successful deployment build alone does not verify every live route or external Wikimedia endpoint.
+Vercel has recently blocked deployment attempts due to its daily deployment-rate limit. The newest source commits are not confirmed deployed. A successful build is not proof that external Wikimedia search or every live route is reachable. Direct public-site HTTP testing is restricted from this environment.
