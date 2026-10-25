@@ -36,10 +36,10 @@ async def lifespan(app: FastAPI):
             logger.info("app.source_catalog_seeded", added=added)
     except Exception as exc:
         logger.warning("app.source_catalog_seed_failed", error=str(exc))
-    if settings.APP_ENV == "production":
+    if settings.CRAWLER_SCHEDULER_ENABLED:
         crawl_scheduler.start()
     yield
-    if settings.APP_ENV == "production":
+    if settings.CRAWLER_SCHEDULER_ENABLED:
         crawl_scheduler.stop()
     logger.info("app.shutdown")
 
