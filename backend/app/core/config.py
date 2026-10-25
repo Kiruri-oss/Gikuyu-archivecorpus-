@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     )
     CRAWLER_RESPECT_ROBOTS: bool = True
     CRAWLER_MAX_CONCURRENCY: int = 5
+    CRAWLER_MIN_HOST_DELAY_SECONDS: float = 1.0
 
     LANGUAGE_DETECTION_THRESHOLD: float = 0.55
     MAX_UPLOAD_SIZE_MB: int = 500
