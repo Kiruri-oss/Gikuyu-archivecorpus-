@@ -36,9 +36,3 @@ services:
         value: gikuyu-audio
       - key: S3_BUCKET_TEXT
         value: gikuyu-text
-      - key: MEILISEARCH_URL
-        sync: false
-      - key: MEILISEARCH_KEY
-        sync: false
-      - key: REDIS_URL
-        sync: false
