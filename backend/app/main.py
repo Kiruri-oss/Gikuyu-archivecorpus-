@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -13,7 +13,8 @@ from app.api.v1.router import api_router
 from app.services.indexing import search_index
 from app.crawlers.scheduler import crawl_scheduler
 from app.crawlers.catalog import seed_curated_sources
-from app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocal, engine
+from sqlalchemy import text
 
 settings = get_settings()
 configure_logging(settings.DEBUG)
@@ -75,4 +76,15 @@ app.include_router(api_router)
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "app": settings.APP_NAME, "env": settings.APP_ENV}
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.error("app.health_database_failed", error=str(exc))
+        raise HTTPException(status_code=503, detail="Persistent database is unavailable") from exc
+    return {
+        "status": "ok",
+        "app": settings.APP_NAME,
+        "env": settings.APP_ENV,
+        "persistence": "connected",
+    }
