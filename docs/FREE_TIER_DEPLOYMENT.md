@@ -20,16 +20,17 @@ The Render blueprint in `/render.yaml` declares the backend and marks account-sp
 Required values:
 - `DATABASE_URL`: Supabase PostgreSQL connection string compatible with asyncpg; use the provider's recommended connection endpoint.
 - `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`: Supabase Storage S3 endpoint and generated S3 credentials.
-- `MEILISEARCH_URL`, `MEILISEARCH_KEY`, `REDIS_URL`: only if those optional services remain enabled in the backend. They must not be left blank if the code still treats them as mandatory.
+- `MEILISEARCH_URL`, `MEILISEARCH_KEY`, `REDIS_URL` are optional in this branch. Without Meilisearch, the API falls back to PostgreSQL text search; without Redis, Hunter state falls back to process memory and may be lost when the free service sleeps or restarts.
 
 ## Release gates
 
 This blueprint alone is not a completed deployment. Before calling the live corpus operational:
 1. Make Redis and Meilisearch optional or provide free hosted equivalents; add a PostgreSQL search fallback.
 2. Run database migrations against the Supabase database.
-3. Configure backend URL and CORS in Vercel and Render.
-4. Verify registration/login, a Gĩkũyũ text submission, persistence after redeploy, audio upload and retrieval, researcher export, Hunter ingestion, and takedown deletion/search invisibility.
-5. Verify scheduled Hunter jobs and their durable frontier; do not rely on in-process scheduling on a free service that spins down.
-6. Confirm the production health endpoint reports persistence as configured only after a real database check succeeds.
+3. Set `BACKEND_API_URL` in the Vercel production environment to the Render service URL (for example, `https://gikuyu-archive-api.onrender.com`), then redeploy the frontend. Keep `FRONTEND_URL` aligned with the actual public website origin. Set `BACKEND_URL` to the actual Render URL if the generated service hostname differs.
+4. Run `alembic upgrade head` from the backend directory against the configured Supabase database before exposing write routes.
+5. Verify registration/login, a Gĩkũyũ text submission, persistence after redeploy, audio upload and retrieval, researcher export, Hunter ingestion, and takedown deletion/search invisibility.
+6. Verify scheduled Hunter jobs and their durable frontier; do not rely on in-process scheduling on a free service that spins down. Without Redis, the frontier is not durable.
+7. Confirm the production health endpoint reports persistence as configured only after a real database check succeeds.
 
 Free tiers have quotas and provider terms can change. This stack is a zero-cost starting point, not a promise of unlimited or always-on production infrastructure.
