@@ -49,7 +49,7 @@ class StorageService:
                         name="gikuyu-archive",
                     )
                 self._firebase_bucket = storage.bucket(
-                    app=app, name=settings.FIREBASE_STORAGE_BUCKET
+                    settings.FIREBASE_STORAGE_BUCKET, app=app
                 )
                 self.provider = "firebase"
             except Exception as exc:
