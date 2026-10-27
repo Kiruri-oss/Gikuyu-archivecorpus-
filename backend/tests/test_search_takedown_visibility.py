@@ -91,6 +91,7 @@ async def test_search_filters_stale_hits_for_pending_sources(client, db_session,
     async def fake_search(index_name, query, limit):
         return {"hits": hits[index_name]}
 
+    monkeypatch.setattr(indexing.search_index, "enabled", True)
     monkeypatch.setattr(indexing.search_index, "search", fake_search)
 
     response = await client.get("/api/v1/search?q=gikuyu")
