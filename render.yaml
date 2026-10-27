@@ -1,5 +1,6 @@
 # Free-tier deployment blueprint.
-# Persistent data must live in Supabase; Render's free Postgres expires after 30 days.
+# PostgreSQL metadata in Supabase; file storage may use Firebase or S3-compatible storage.
+# Render's free PostgreSQL expires after 30 days, so it is not used as the archive database.
 services:
   - type: web
     name: gikuyu-archive-api
@@ -24,15 +25,9 @@ services:
         value: https://gikuyu-archivecorpus.vercel.app
       - key: BACKEND_URL
         value: https://gikuyu-archive-api.onrender.com
-      - key: S3_ENDPOINT
+      - key: FIREBASE_PROJECT_ID
         sync: false
-      - key: S3_ACCESS_KEY
+      - key: FIREBASE_STORAGE_BUCKET
         sync: false
-      - key: S3_SECRET_KEY
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
         sync: false
-      - key: S3_USE_SSL
-        value: "true"
-      - key: S3_BUCKET_AUDIO
-        value: gikuyu-audio
-      - key: S3_BUCKET_TEXT
-        value: gikuyu-text
