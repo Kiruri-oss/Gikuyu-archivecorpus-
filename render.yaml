@@ -1,0 +1,44 @@
+# Free-tier deployment blueprint.
+# Persistent data must live in Supabase; Render's free Postgres expires after 30 days.
+services:
+  - type: web
+    name: gikuyu-archive-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: Gikuyu Archive Corpus
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        value: https://gikuyu-archivecorpus.vercel.app
+      - key: BACKEND_URL
+        value: https://gikuyu-archive-api.onrender.com
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_USE_SSL
+        value: "true"
+      - key: S3_BUCKET_AUDIO
+        value: gikuyu-audio
+      - key: S3_BUCKET_TEXT
+        value: gikuyu-text
+      - key: MEILISEARCH_URL
+        sync: false
+      - key: MEILISEARCH_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
