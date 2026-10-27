@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     DATABASE_URL: PostgresDsn
-    REDIS_URL: RedisDsn
+    # Optional for a no-cost first deployment. Crawl state then falls back to
+    # process memory, so a durable queue is still recommended for sustained crawling.
+    REDIS_URL: RedisDsn | None = None
 
     S3_ENDPOINT: str
     S3_ACCESS_KEY: str
@@ -25,8 +27,9 @@ class Settings(BaseSettings):
     S3_REGION: str = "us-east-1"
     S3_USE_SSL: bool = True
 
-    MEILISEARCH_URL: str = "http://localhost:7700"
-    MEILISEARCH_KEY: str
+    # Meilisearch is optional: public text search falls back to PostgreSQL.
+    MEILISEARCH_URL: str | None = None
+    MEILISEARCH_KEY: str | None = None
 
     FRONTEND_URL: AnyHttpUrl = "http://localhost:3000"
     BACKEND_URL: AnyHttpUrl = "http://localhost:8000"
