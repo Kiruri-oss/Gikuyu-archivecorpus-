@@ -15,19 +15,21 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     DATABASE_URL: PostgresDsn
-    # Optional for a no-cost first deployment. Crawl state then falls back to
-    # process memory, so a durable queue is still recommended for sustained crawling.
     REDIS_URL: RedisDsn | None = None
 
-    S3_ENDPOINT: str
-    S3_ACCESS_KEY: str
-    S3_SECRET_KEY: str
+    # Choose one media provider: Firebase Cloud Storage or S3-compatible object storage.
+    FIREBASE_PROJECT_ID: str | None = None
+    FIREBASE_STORAGE_BUCKET: str | None = None
+    FIREBASE_SERVICE_ACCOUNT_JSON: str | None = None
+
+    S3_ENDPOINT: str | None = None
+    S3_ACCESS_KEY: str | None = None
+    S3_SECRET_KEY: str | None = None
     S3_BUCKET_AUDIO: str = "gikuyu-audio"
     S3_BUCKET_TEXT: str = "gikuyu-text"
     S3_REGION: str = "us-east-1"
     S3_USE_SSL: bool = True
 
-    # Meilisearch is optional: public text search falls back to PostgreSQL.
     MEILISEARCH_URL: str | None = None
     MEILISEARCH_KEY: str | None = None
 
@@ -35,8 +37,6 @@ class Settings(BaseSettings):
     BACKEND_URL: AnyHttpUrl = "http://localhost:8000"
 
     CRAWLER_USER_AGENT: str = "GikuyuArchiveBot/1.0 (+https://gikuyu-archivecorpus.vercel.app/about)"
-    # Seed sources are discovery starting points, not the crawler's full boundary.
-    # Relevant public links may expand to other hosts under strict per-host budgets.
     CRAWLER_SEED_URLS: str = (
         "https://ki.wikipedia.org/wiki/Main_Page,"
         "https://ki.wiktionary.org/wiki/Main_Page,"
