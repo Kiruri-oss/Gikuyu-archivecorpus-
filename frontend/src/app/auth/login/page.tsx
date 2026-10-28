@@ -41,9 +41,8 @@ export default function LoginPage() {
     }
   }
 
-  if (status === "authenticated") {
-    return <div role="status" className="mx-auto max-w-xl py-16 text-center text-sm text-gray-500">You are already signed in. Opening your archive…</div>;
-  }
+  if (status === "loading") return <div role="status" className="mx-auto max-w-xl py-16 text-center text-sm text-gray-500">Checking your archive session…</div>;
+  if (status === "authenticated") return <div role="status" className="mx-auto max-w-xl py-16 text-center text-sm text-gray-500">You are already signed in. Opening your archive…</div>;
 
   return (
     <div className="mx-auto grid max-w-5xl overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm sm:my-10 lg:grid-cols-[0.9fr_1.1fr]">
