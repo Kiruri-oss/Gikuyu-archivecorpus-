@@ -45,6 +45,7 @@ export default function RegisterPage() {
     }
   }
 
+  if (status === "loading") return <div role="status" className="mx-auto max-w-2xl py-16 text-center text-sm text-gray-500">Checking your archive session…</div>;
   if (status === "authenticated") return <div role="status" className="mx-auto max-w-2xl py-16 text-center text-sm text-gray-500">You are already signed in. Opening your archive…</div>;
 
   return (
