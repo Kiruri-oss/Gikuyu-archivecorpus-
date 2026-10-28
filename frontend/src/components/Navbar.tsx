@@ -60,21 +60,19 @@ export function Navbar() {
           <span className="min-w-0"><span className="block truncate text-base font-bold sm:text-lg">Gĩkũyũ Archive</span><span className="hidden text-xs text-gray-500 sm:block">Language · Memory · Community</span></span>
         </Link>
 
-        <div className="hidden items-center gap-0.5 xl:flex">
+        <div className="hidden items-center gap-0.5 lg:flex">
           {links.map((link) => <Link key={link.href} href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined} className={navLinkClass(link.href)}>{link.label}</Link>)}
         </div>
 
-        <div className="hidden shrink-0 items-center gap-1 sm:flex">{accountActions}</div>
-        <button type="button" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm font-semibold text-earth-900 hover:bg-gray-50 sm:hidden xl:hidden" aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen((open) => !open)}>
+        <div className="hidden shrink-0 items-center gap-1 lg:flex">{accountActions}</div>
+
+        <button type="button" className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm font-semibold text-earth-900 hover:bg-gray-50 lg:hidden" aria-expanded={menuOpen} aria-controls="responsive-navigation" onClick={() => setMenuOpen((open) => !open)}>
           <span>{menuOpen ? "Close" : "Menu"}</span><span aria-hidden="true">{menuOpen ? "×" : "☰"}</span>
         </button>
-        <div className="hidden sm:flex xl:hidden">
-          <Link href={status === "authenticated" ? "/account" : "/auth/login"} className="rounded-lg bg-earth-900 px-3 py-2 text-sm font-semibold text-white">{status === "authenticated" ? "My archive" : status === "unavailable" ? "Session unverified" : status === "loading" ? "Checking…" : "Sign in"}</Link>
-        </div>
       </nav>
 
-      {menuOpen && <div id="mobile-navigation" className="border-t border-gray-100 bg-white px-4 pb-4 pt-3 sm:hidden">
-        <div className="grid grid-cols-2 gap-2">
+      {menuOpen && <div id="responsive-navigation" className="border-t border-gray-100 bg-white px-4 pb-4 pt-3 sm:px-6 lg:hidden">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {links.map((link) => <Link key={link.href} href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={navLinkClass(link.href)}>{link.label}</Link>)}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">{accountActions}</div>
