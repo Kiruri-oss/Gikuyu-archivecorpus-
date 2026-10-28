@@ -20,7 +20,7 @@ class FakeResponse:
                     {
                         "pageid": 123,
                         "title": "Sample Gĩkũyũ article",
-                        "extract": "This is a sufficiently long sample article in Gĩkũyũ. " * 4,
+                        "extract": "Mũndũ nĩ mũciĩ; andũ nĩ mũndũ wa Gĩkũyũ. Gũkũ nĩ wĩra wa andũ, nĩguo mũthenya. " * 4,
                         "fullurl": "https://ki.wikipedia.org/wiki/Sample",
                         "revisions": [{"revid": 456, "timestamp": "2026-10-25T12:00:00Z"}],
                     }
