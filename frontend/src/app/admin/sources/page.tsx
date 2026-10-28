@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 type Source = {
   id: string;
@@ -62,6 +63,7 @@ export default function AdminSourcesPage() {
   }
 
   return (
+    <ProtectedRoute roles={["reviewer","admin"]}>
     <section className="mx-auto max-w-5xl space-y-7 py-8 sm:py-12">
       <header className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-earth-700">Reviewer tools</p><h1 className="text-3xl font-bold text-earth-900 sm:text-4xl">Hunter source review</h1><p className="leading-7 text-gray-600">Review source candidates collected by the Gĩkũyũ Hunter. Confirm the language, provenance and licence evidence before approving a record for public display or research exports.</p></header>
       
@@ -72,5 +74,6 @@ export default function AdminSourcesPage() {
       <div className="space-y-4">{items.map((source) => <article key={source.id} className="space-y-4 rounded-2xl border border-gray-200 p-5 sm:p-6"><div className="space-y-2"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-earth-50 px-3 py-1 text-xs font-semibold uppercase text-earth-800">{source.source_type}</span>{source.license && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">{source.license}</span>}</div><h2 className="break-all text-lg font-semibold text-earth-900">{source.domain}</h2><a href={source.url} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-earth-700 underline underline-offset-4">{source.url} ↗</a><p className="text-xs text-gray-500">Discovered {new Date(source.created_at).toLocaleString()} · Language confidence {source.language_confidence == null ? "not recorded" : `${Math.round(source.language_confidence * 100)}%`}</p></div><div className="space-y-2"><label htmlFor={`review-notes-${source.id}`} className="block text-sm font-semibold">Review notes (optional)</label><textarea id={`review-notes-${source.id}`} rows={2} maxLength={5000} value={notes[source.id] ?? ""} onChange={(e) => setNotes((current) => ({ ...current, [source.id]: e.target.value }))} className="w-full rounded-lg border border-gray-300 p-3" placeholder="Language verification, licence evidence, corrections…" /></div><div className="flex flex-wrap gap-2"><button type="button" disabled={busyId === source.id} onClick={() => void review(source, "approved")} className="rounded-lg bg-earth-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Approve source</button><button type="button" disabled={busyId === source.id} onClick={() => void review(source, "rejected")} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 disabled:opacity-50">Reject</button><button type="button" disabled={busyId === source.id} onClick={() => void review(source, "taken_down")} className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-800 disabled:opacity-50">Hide from search</button></div></article>)}</div>
       <p className="text-sm text-gray-500">Only approved, publicly displayable records enter public search and curated exports. <Link href="/admin/hunter" className="font-semibold text-earth-700 underline">Hunter control</Link> · <Link href="/admin/takedowns" className="font-semibold text-earth-700 underline">Takedown queue</Link>.</p>
     </section>
+    </ProtectedRoute>
   );
 }
