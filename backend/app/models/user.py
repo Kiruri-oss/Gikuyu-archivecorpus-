@@ -21,7 +21,7 @@ class User(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.CONTRIBUTOR, nullable=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, values_callable=lambda enum_cls: [member.value for member in enum_cls]), default=UserRole.CONTRIBUTOR, nullable=False)
     institution: Mapped[str | None] = mapped_column(String(200))
     dialect: Mapped[str | None] = mapped_column(String(100))
     county: Mapped[str | None] = mapped_column(String(100))
