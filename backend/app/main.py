@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,13 +15,38 @@ from app.services.indexing import search_index
 from app.crawlers.scheduler import crawl_scheduler
 from app.crawlers.catalog import seed_curated_sources
 from app.db.session import AsyncSessionLocal, engine
-from sqlalchemy import text
+from sqlalchemy import text, select
+from app.models.text_record import TextRecord
+from app.services.wikimedia_import import import_random_wikipedia_pages
 
 settings = get_settings()
 configure_logging(settings.DEBUG)
 logger = get_logger(__name__)
 
 limiter = Limiter(key_func=get_remote_address)
+_initial_import_task: asyncio.Task | None = None
+
+
+async def _seed_initial_gikuyu_corpus() -> None:
+    """Bootstrap an empty archive from Gĩkũyũ Wikipedia under CC BY-SA 4.0."""
+    try:
+        async with AsyncSessionLocal() as db:
+            existing = await db.execute(select(TextRecord.id).limit(1))
+            if existing.scalar_one_or_none():
+                logger.info("app.initial_corpus_seed_skipped", reason="archive already contains text")
+                return
+            result = await import_random_wikipedia_pages(db, "ki", 50)
+            await db.commit()
+            logger.info(
+                "app.initial_corpus_seed_finished",
+                requested=result.requested,
+                imported=result.imported,
+                skipped_non_gikuyu=result.skipped_non_gikuyu,
+                skipped_empty=result.skipped_empty,
+                skipped_duplicate_text=result.skipped_duplicate_text,
+            )
+    except Exception as exc:
+        logger.warning("app.initial_corpus_seed_failed", error=str(exc))
 
 
 @asynccontextmanager
@@ -37,11 +63,20 @@ async def lifespan(app: FastAPI):
             logger.info("app.source_catalog_seeded", added=added)
     except Exception as exc:
         logger.warning("app.source_catalog_seed_failed", error=str(exc))
+    global _initial_import_task
     if settings.APP_ENV == "production":
+        # Import in the background so the API becomes available immediately.
+        _initial_import_task = asyncio.create_task(_seed_initial_gikuyu_corpus())
         crawl_scheduler.start()
     yield
     if settings.APP_ENV == "production":
         crawl_scheduler.stop()
+        if _initial_import_task and not _initial_import_task.done():
+            _initial_import_task.cancel()
+            try:
+                await _initial_import_task
+            except asyncio.CancelledError:
+                pass
     logger.info("app.shutdown")
 
 
