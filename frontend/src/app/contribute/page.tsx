@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 type TextResponse = { id: string; review_status?: string; message?: string };
 type AudioResponse = { id: string; review_status?: string; message?: string };
@@ -105,6 +106,7 @@ export default function ContributePage() {
   }
 
   return (
+    <ProtectedRoute roles={["contributor", "reviewer", "admin"]}>
     <section className="mx-auto max-w-3xl space-y-7 py-8 sm:py-12">
       <header className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-earth-700">Community archive</p>
@@ -157,5 +159,6 @@ export default function ContributePage() {
         <div className="flex flex-wrap items-center gap-4"><button type="submit" disabled={busy} className="rounded-lg bg-earth-900 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Submitting…" : "Submit for review"}</button><Link href="/auth/login" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Sign in</Link><Link href="/auth/register" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Create contributor account</Link></div>
       </form>
     </section>
+    </ProtectedRoute>
   );
 }
