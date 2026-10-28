@@ -155,7 +155,7 @@ async def import_gikuyu_bible(db: AsyncSession, client: Any | None = None) -> di
     own_client = client is None
     if own_client:
         client = httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=20.0), follow_redirects=True, headers={
-            "User-Agent": "GikuyuArchiveCorpus/1.1 (openly licensed Gĩkũyũ text preservation)"
+            "User-Agent": "GikuyuArchiveCorpus/1.1 (openly licensed Gikuyu text preservation)"
         })
 
     imported = 0
