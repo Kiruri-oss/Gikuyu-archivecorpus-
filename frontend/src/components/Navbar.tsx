@@ -30,6 +30,8 @@ export function Navbar() {
     router.replace("/");
   }
 
+  const visibleLinks = links.filter((link) => link.href !== "/researcher" || (status === "authenticated" && user && ["researcher", "reviewer", "admin"].includes(user.role)));
+
   function navLinkClass(href: string) {
     return `rounded-lg px-3 py-2 text-sm font-medium transition ${isActive(pathname, href) ? "bg-earth-50 text-earth-900" : "text-gray-600 hover:bg-gray-50 hover:text-earth-900"}`;
   }
@@ -61,7 +63,7 @@ export function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-0.5 lg:flex">
-          {links.map((link) => <Link key={link.href} href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined} className={navLinkClass(link.href)}>{link.label}</Link>)}
+          {visibleLinks.map((link) => <Link key={link.href} href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined} className={navLinkClass(link.href)}>{link.label}</Link>)}
         </div>
 
         <div className="hidden shrink-0 items-center gap-1 lg:flex">{accountActions}</div>
