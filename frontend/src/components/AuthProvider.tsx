@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api";
-import { AUTH_EVENT, clearTokens, getAccessToken } from "@/lib/auth";
+import { AUTH_EVENT, clearTokens, getAccessToken, getRefreshToken } from "@/lib/auth";
 
 export type ArchiveUser = {
   id: string;
@@ -27,6 +27,8 @@ type AuthContextValue = {
   signOut: () => void;
 };
 
+type TokenPair = { access_token: string; refresh_token: string; token_type: string };
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -45,15 +47,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = await api.get<ArchiveUser>("/api/v1/auth/me");
       setUser(currentUser);
       setStatus("authenticated");
+      return;
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
+      if (!(error instanceof ApiError) || error.status !== 401) {
+        setUser(null);
+        setStatus("unavailable");
+        return;
+      }
+    }
+
+    // A failed access token is not proof that the user is signed out: try the
+    // backend's refresh flow before clearing the session.
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      clearTokens();
+      setUser(null);
+      setStatus("anonymous");
+      return;
+    }
+
+    try {
+      const tokens = await api.post<TokenPair>(
+        `/api/v1/auth/refresh?refresh_token=${encodeURIComponent(refreshToken)}`,
+      );
+      window.localStorage.setItem("access_token", tokens.access_token);
+      window.localStorage.setItem("refresh_token", tokens.refresh_token);
+      const currentUser = await api.get<ArchiveUser>("/api/v1/auth/me");
+      setUser(currentUser);
+      setStatus("authenticated");
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         clearTokens();
         setUser(null);
         setStatus("anonymous");
-        return;
+      } else {
+        setUser(null);
+        setStatus("unavailable");
       }
-      setUser(null);
-      setStatus("unavailable");
     }
   }, []);
 
