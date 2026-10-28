@@ -28,23 +28,32 @@ _initial_import_task: asyncio.Task | None = None
 
 
 async def _seed_initial_gikuyu_corpus() -> None:
-    """Populate the archive with licensed Gĩkũyũ texts; do not depend on Wikipedia alone."""
+    """Keep licensed Gĩkũyũ Bible ingestion resumable; only fall back if still empty."""
     try:
         async with AsyncSessionLocal() as db:
-            existing = await db.execute(select(TextRecord.id).limit(1))
-            if existing.scalar_one_or_none():
-                logger.info("app.initial_corpus_seed_skipped", reason="archive already contains text")
-                return
+            # This importer is idempotent and resumes incomplete batches. Do not
+            # skip it just because another source has already populated the corpus.
             bible_result = await import_gikuyu_bible(db)
-            await db.commit()
-            logger.info("app.initial_bible_import_finished", imported=bible_result["imported"], skipped=bible_result["skipped"])
+            logger.info(
+                "app.initial_bible_import_finished",
+                imported=bible_result["imported"],
+                skipped=bible_result["skipped"],
+            )
+
             count = await db.execute(select(TextRecord.id).limit(1))
             if count.scalar_one_or_none() is None:
                 result = await import_random_wikipedia_pages(db, "ki", 50)
                 await db.commit()
-                logger.info("app.initial_corpus_seed_finished", requested=result.requested, imported=result.imported, skipped_non_gikuyu=result.skipped_non_gikuyu, skipped_empty=result.skipped_empty, skipped_duplicate_text=result.skipped_duplicate_text)
+                logger.info(
+                    "app.initial_corpus_seed_finished",
+                    requested=result.requested,
+                    imported=result.imported,
+                    skipped_non_gikuyu=result.skipped_non_gikuyu,
+                    skipped_empty=result.skipped_empty,
+                    skipped_duplicate_text=result.skipped_duplicate_text,
+                )
     except Exception as exc:
-        logger.warning("app.initial_corpus_seed_failed", error=str(exc))
+        logger.exception("app.initial_corpus_seed_failed", error=str(exc))
 
 
 @asynccontextmanager
