@@ -26,8 +26,8 @@ class Submission(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     contributor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
-    submission_type: Mapped[SubmissionType] = mapped_column(Enum(SubmissionType), nullable=False)
-    status: Mapped[SubmissionStatus] = mapped_column(Enum(SubmissionStatus), default=SubmissionStatus.PENDING)
+    submission_type: Mapped[SubmissionType] = mapped_column(Enum(SubmissionType, values_callable=lambda enum_cls: [member.value for member in enum_cls]), nullable=False)
+    status: Mapped[SubmissionStatus] = mapped_column(Enum(SubmissionStatus, values_callable=lambda enum_cls: [member.value for member in enum_cls]), default=SubmissionStatus.PENDING)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     payload: Mapped[str] = mapped_column(Text, nullable=False)
     reviewer_notes: Mapped[str | None] = mapped_column(Text)
