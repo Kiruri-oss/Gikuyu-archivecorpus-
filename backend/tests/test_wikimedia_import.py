@@ -1,8 +1,12 @@
+import io
+import json
+import zipfile
+
 import pytest
 from sqlalchemy import select
 from app.models.source import Source, SourceStatus
 from app.models.text_record import TextRecord
-from app.services.wikimedia_import import import_random_wikipedia_pages
+from app.services.wikimedia_import import import_gikuyu_bible, import_random_wikipedia_pages, BIBLICA_SOURCE
 
 
 class FakeResponse:
@@ -79,3 +83,85 @@ async def test_wikimedia_import_rejects_other_languages(db_session):
     for code in ("rw", "sw", "ha", "yo", "en"):
         with pytest.raises(ValueError):
             await import_random_wikipedia_pages(db_session, code, limit=1, client=FakeClient())
+
+
+def make_fake_bible_zip() -> bytes:
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "GEN_1.txt",
+            "Mũndũ nĩ arĩa mũgambo wa Ngai na andũ a Gĩkũyũ. " * 8,
+        )
+        archive.writestr(
+            "GEN_2.txt",
+            "Ũndũ wa gũcooka hamwe, nĩ wĩra wa andũ a Gĩkũyũ na nyũmba ciao. " * 8,
+        )
+        archive.writestr("README.md", "Publisher notes that must not enter the corpus.")
+    return stream.getvalue()
+
+
+class FakeBibleResponse:
+    def __init__(self, content: bytes):
+        self.content = content
+
+    def raise_for_status(self):
+        return None
+
+
+class FakeBibleClient:
+    def __init__(self, content: bytes):
+        self.content = content
+        self.calls = 0
+
+    async def get(self, url):
+        assert url == "https://ebible.org/Scriptures/kik_readaloud.zip"
+        self.calls += 1
+        return FakeBibleResponse(self.content)
+
+
+@pytest.mark.asyncio
+async def test_bible_import_batches_content_and_preserves_permissions(db_session):
+    from unittest.mock import AsyncMock, patch
+
+    client = FakeBibleClient(make_fake_bible_zip())
+    with patch("app.services.wikimedia_import.search_index.index_documents", new_callable=AsyncMock) as index:
+        result = await import_gikuyu_bible(db_session, client=client)
+
+    assert result["imported"] == 2
+    assert client.calls == 1
+
+    records = (await db_session.execute(select(TextRecord).order_by(TextRecord.title))).scalars().all()
+    assert len(records) == 2
+    assert all(record.language_code == "ki" for record in records)
+    assert all(record.dialect == "Gĩkũyũ" for record in records)
+    assert all(record.allow_public_display for record in records)
+    assert all(record.allow_research_use for record in records)
+    assert all(not record.allow_ai_training for record in records)
+    assert all(not record.allow_commercial_use for record in records)
+    assert all(record.license == "CC BY-SA 4.0" for record in records)
+
+    sources = (await db_session.execute(select(Source).where(Source.domain == "ebible.org"))).scalars().all()
+    assert len(sources) == 2
+    assert all(source.status == SourceStatus.APPROVED for source in sources)
+    assert all(BIBLICA_SOURCE in source.url for source in sources)
+    assert index.await_count == 1
+    indexed_batch = index.await_args.args[1]
+    assert len(indexed_batch) == 2
+    assert all(item["language_code"] == "ki" for item in indexed_batch)
+    assert all(item["allow_ai_training"] is False for item in indexed_batch)
+
+
+@pytest.mark.asyncio
+async def test_bible_import_records_completion_and_skips_redownload(db_session):
+    client = FakeBibleClient(make_fake_bible_zip())
+    first = await import_gikuyu_bible(db_session, client=client)
+    assert first["imported"] == 2
+
+    second_client = FakeBibleClient(b"")
+    second = await import_gikuyu_bible(db_session, client=second_client)
+    assert second == {"imported": 0, "skipped": 1}
+    assert second_client.calls == 0
+
+    sources = (await db_session.execute(select(Source).where(Source.domain == "ebible.org"))).scalars().all()
+    metadata = [json.loads(source.raw_metadata or "{}") for source in sources]
+    assert any(item.get("import_complete") is True for item in metadata)
