@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Query
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.core.deps import DbSession
 from app.models.media import Media
@@ -42,9 +42,41 @@ async def search(
     limit: int = 20,
 ) -> dict:
     bounded_limit = max(1, min(limit, 50))
-    media_hits = (await search_index.search("media", q, bounded_limit)).get("hits", [])
-    segment_hits = (await search_index.search("segments", q, bounded_limit)).get("hits", [])
-    text_hits = (await search_index.search("texts", q, bounded_limit)).get("hits", [])
+    if search_index.enabled:
+        media_hits = (await search_index.search("media", q, bounded_limit)).get("hits", [])
+        segment_hits = (await search_index.search("segments", q, bounded_limit)).get("hits", [])
+        text_hits = (await search_index.search("texts", q, bounded_limit)).get("hits", [])
+    else:
+        # The free deployment needs no separate search vendor. PostgreSQL remains
+        # the source of truth and applies the same Gĩkũyũ-only/takedown visibility rules.
+        result = await db.execute(
+            select(TextRecord, Source.url)
+            .join(Source, TextRecord.source_id == Source.id)
+            .where(
+                Source.status == SourceStatus.APPROVED,
+                TextRecord.language_code == "ki",
+                TextRecord.allow_public_display.is_(True),
+                or_(
+                    TextRecord.title.ilike(f"%{q}%"),
+                    TextRecord.body.ilike(f"%{q}%"),
+                ),
+            )
+            .order_by(TextRecord.created_at.desc())
+            .limit(bounded_limit)
+        )
+        text_hits = [
+            {
+                "id": str(record.id),
+                "title": record.title,
+                "body": record.body[:1200],
+                "source_url": source_url,
+                "language_code": record.language_code,
+                "license": record.license,
+            }
+            for record, source_url in result.all()
+        ]
+        media_hits = []
+        segment_hits = []
 
     # Meilisearch is an index, not the authority for publication state. Validate
     # every hit against the database so pending, rejected or taken-down sources

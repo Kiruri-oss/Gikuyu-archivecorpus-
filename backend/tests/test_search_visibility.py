@@ -3,12 +3,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.services import indexing
 from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
 
 
 @pytest.mark.asyncio
-async def test_search_hides_takedown_and_non_gikuyu_text_from_stale_index(client, db_session):
+async def test_search_hides_takedown_and_non_gikuyu_text_from_stale_index(client, db_session, monkeypatch):
     approved_source = Source(
         url="https://example.org/gikuyu",
         domain="example.org",
@@ -72,6 +73,7 @@ async def test_search_hides_takedown_and_non_gikuyu_text_from_stale_index(client
             ]
         }
 
+    monkeypatch.setattr(indexing.search_index, "enabled", True)
     with patch(
         "app.api.v1.search.search_index.search",
         new_callable=AsyncMock,

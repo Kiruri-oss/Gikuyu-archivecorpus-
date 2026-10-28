@@ -30,7 +30,7 @@ class CrawlScheduler:
         self.scheduler = AsyncIOScheduler()
         self.web = WebCrawler()
         self.youtube = YouTubeCrawler()
-        self.redis = Redis.from_url(str(settings.REDIS_URL), decode_responses=True)
+        self.redis = Redis.from_url(str(settings.REDIS_URL), decode_responses=True) if settings.REDIS_URL else None
         self._memory_frontier: list[str] = []
         self._memory_visited: set[str] = set()
         self.last_run: dict[str, object] = {"status": "never_run"}
@@ -38,6 +38,8 @@ class CrawlScheduler:
 
     async def _load_crawl_state(self) -> tuple[set[str], list[str], bool]:
         """Load a durable crawl frontier; retain a process-local fallback if Redis is unavailable."""
+        if self.redis is None:
+            return set(self._memory_visited), list(self._memory_frontier), False
         try:
             frontier = await self.redis.lrange(FRONTIER_KEY, 0, -1)
             visited = await self.redis.smembers(VISITED_KEY)
@@ -61,7 +63,7 @@ class CrawlScheduler:
             self._memory_frontier = list(frontier)
             self._memory_visited = set(previously_visited) | set(visited_now)
 
-        if not redis_available:
+        if not redis_available or self.redis is None:
             return
 
         try:
