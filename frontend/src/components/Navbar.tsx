@@ -75,7 +75,7 @@ export function Navbar() {
 
       {menuOpen && <div id="responsive-navigation" className="border-t border-gray-100 bg-white px-4 pb-4 pt-3 sm:px-6 lg:hidden">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {links.map((link) => <Link key={link.href} href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={navLinkClass(link.href)}>{link.label}</Link>)}
+          {visibleLinks.map((link) => <Link key={link.href} href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined} onClick={() => setMenuOpen(false)} className={navLinkClass(link.href)}>{link.label}</Link>)}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">{accountActions}</div>
       </div>}
