@@ -1,6 +1,9 @@
 import hashlib
 import json
 import uuid
+from urllib.parse import urlsplit
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
@@ -9,6 +12,7 @@ from app.core.deps import DbSession, CurrentUser
 from app.models.media import Media, MediaKind
 from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
+from app.models.saved_reference import SavedReference
 
 router = APIRouter(prefix="/community", tags=["community"])
 
@@ -144,3 +148,104 @@ async def my_archive_summary(db: DbSession, user: CurrentUser) -> dict:
         "taken_down": sum(1 for item in recent if item["status"] == "taken_down"),
     }
     return {"totals": totals, "recent": recent[:30]}
+
+
+class SavedReferenceCreate(BaseModel):
+    reference_key: str = Field(min_length=1, max_length=500)
+    title: str = Field(min_length=1, max_length=500)
+    source_name: str = Field(min_length=1, max_length=255)
+    source_url: str = Field(min_length=8, max_length=2000)
+
+
+class SavedReferenceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    reference_key: str
+    title: str
+    source_name: str
+    source_url: str
+    created_at: str
+
+
+def _saved_reference_payload(item: SavedReference) -> dict:
+    return {
+        "id": str(item.id),
+        "reference_key": item.reference_key,
+        "title": item.title,
+        "source_name": item.source_name,
+        "source_url": item.source_url,
+        "saved_at": item.created_at.isoformat() if item.created_at else "",
+    }
+
+
+@router.get("/saved-references")
+async def list_saved_references(db: DbSession, user: CurrentUser) -> dict:
+    """Return only the current member's saved reading and research references."""
+    result = await db.execute(
+        select(SavedReference)
+        .where(SavedReference.user_id == user.id)
+        .order_by(SavedReference.created_at.desc())
+        .limit(500)
+    )
+    return {"items": [_saved_reference_payload(item) for item in result.scalars().all()]}
+
+
+@router.post("/saved-references", status_code=201)
+async def save_reference(
+    payload: SavedReferenceCreate, db: DbSession, user: CurrentUser
+) -> dict:
+    """Add a reference to a member's durable, cross-device collection."""
+    parsed = urlsplit(payload.source_url.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="Saved references must use a valid HTTP or HTTPS URL.")
+
+    reference_key = payload.reference_key.strip()
+    title = payload.title.strip()
+    source_name = payload.source_name.strip()
+    source_url = payload.source_url.strip()
+    if not reference_key or not title or not source_name:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="Reference ID, title and source name cannot be blank.")
+
+    existing_result = await db.execute(
+        select(SavedReference).where(
+            SavedReference.user_id == user.id,
+            SavedReference.reference_key == reference_key,
+        )
+    )
+    item = existing_result.scalar_one_or_none()
+    if item is None:
+        item = SavedReference(
+            user_id=user.id,
+            reference_key=reference_key,
+            title=title,
+            source_name=source_name,
+            source_url=source_url,
+        )
+        db.add(item)
+    else:
+        item.title = title
+        item.source_name = source_name
+        item.source_url = source_url
+    await db.flush()
+    return _saved_reference_payload(item)
+
+
+@router.delete("/saved-references/{reference_id}", status_code=204)
+async def delete_saved_reference(
+    reference_id: uuid.UUID, db: DbSession, user: CurrentUser
+) -> None:
+    """Delete one reference belonging to the current member; never another user's item."""
+    from fastapi import HTTPException
+    result = await db.execute(
+        select(SavedReference).where(
+            SavedReference.id == reference_id,
+            SavedReference.user_id == user.id,
+        )
+    )
+    item = result.scalar_one_or_none()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Saved reference not found.")
+    await db.delete(item)
