@@ -49,15 +49,33 @@ function AccountContent() {
   const [savedCount, setSavedCount] = useState(0);
 
   useEffect(() => {
-    setSavedCount(readSavedReferences().length);
-    const syncSavedCount = () => setSavedCount(readSavedReferences().length);
-    window.addEventListener("storage", syncSavedCount);
-    window.addEventListener("focus", syncSavedCount);
-    return () => {
-      window.removeEventListener("storage", syncSavedCount);
-      window.removeEventListener("focus", syncSavedCount);
+    let cancelled = false;
+    const syncSavedCount = async () => {
+      const localItems = readSavedReferences();
+      if (status !== "authenticated") {
+        if (!cancelled) setSavedCount(localItems.length);
+        return;
+      }
+      try {
+        const result = await api.get<{ items: { reference_key: string }[] }>("/api/v1/community/saved-references");
+        const remoteKeys = new Set(result.items.map((item) => item.reference_key));
+        const unsyncedLocalCount = localItems.filter((item) => !remoteKeys.has(item.id)).length;
+        if (!cancelled) setSavedCount(result.items.length + unsyncedLocalCount);
+      } catch {
+        if (!cancelled) setSavedCount(localItems.length);
+      }
     };
-  }, []);
+    void syncSavedCount();
+    const onFocus = () => { void syncSavedCount(); };
+    const onStorage = () => { void syncSavedCount(); };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [status]);
 
   useEffect(() => {
     let cancelled = false;
