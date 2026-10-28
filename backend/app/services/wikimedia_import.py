@@ -290,6 +290,29 @@ async def import_gikuyu_bible(db: AsyncSession, client: Any | None = None) -> di
                     await db.commit()
                     imported += len(records)
 
+                    try:
+                        await search_index.index_documents("texts", [
+                            {
+                                "id": str(record.id),
+                                "title": record.title,
+                                "body": record.body,
+                                "language_code": "ki",
+                                "dialect": "Gĩkũyũ",
+                                "genre": record.genre or "",
+                                "license": BIBLICA_LICENSE,
+                                "source_url": BIBLICA_SOURCE,
+                                "allow_ai_training": False,
+                                "allow_commercial_use": False,
+                            }
+                            for record in records
+                        ])
+                    except Exception as exc:
+                        logger.warning(
+                            "bible.import_index_failed",
+                            batch_size=len(records),
+                            error=str(exc),
+                        )
+
                 candidate_count += len(batch)
                 if candidate_count % 200 == 0 or candidate_count == len(entries):
                     logger.info(
@@ -312,7 +335,7 @@ async def import_gikuyu_bible(db: AsyncSession, client: Any | None = None) -> di
             except (TypeError, json.JSONDecodeError):
                 final_metadata = {}
             final_metadata["import_complete"] = True
-            final_metadata["imported_count"] = imported
+            final_metadata["new_records_added"] = imported
             final_metadata["archive_members_processed"] = candidate_count
             last_source.raw_metadata = json.dumps(final_metadata, ensure_ascii=False)
             await db.commit()
