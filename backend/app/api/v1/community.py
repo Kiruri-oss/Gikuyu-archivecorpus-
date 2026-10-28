@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 
-from app.core.deps import DbSession
+from app.core.deps import DbSession, CurrentUser
 from app.models.media import Media, MediaKind
 from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
@@ -79,3 +79,68 @@ async def contributor_leaderboard(
         })
     ranked.sort(key=lambda item: (-item["approved_contributions"], item["display_name"]))
     return {"items": [{"rank": index + 1, **item} for index, item in enumerate(ranked[:limit])]}
+
+
+@router.get("/me")
+async def my_archive_summary(db: DbSession, user: CurrentUser) -> dict:
+    """Return the signed-in user's own Gĩkũyũ contribution history and review state."""
+    text_result = await db.execute(
+        select(TextRecord, Source.status)
+        .join(Source, TextRecord.source_id == Source.id)
+        .where(TextRecord.contributor_id == user.id, TextRecord.language_code == "ki")
+        .order_by(TextRecord.created_at.desc())
+        .limit(200)
+    )
+
+    recent: list[dict] = []
+    text_rows = text_result.all()
+    for record, source_status in text_rows:
+        recent.append({
+            "id": str(record.id),
+            "title": record.title,
+            "kind": "text",
+            "genre": record.genre,
+            "status": source_status.value if hasattr(source_status, "value") else str(source_status),
+            "created_at": record.created_at.isoformat() if record.created_at else "",
+        })
+
+    # Audio upload contributor identity is preserved in source provenance metadata.
+    # Filter candidates in SQL, then verify the parsed JSON identity exactly.
+    media_result = await db.execute(
+        select(Media, Source.status, Source.raw_metadata)
+        .join(Source, Media.source_id == Source.id)
+        .where(
+            Source.source_type == SourceType.USER_UPLOAD,
+            Source.raw_metadata.contains(str(user.id)),
+            Media.language_code == "ki",
+        )
+        .order_by(Media.created_at.desc())
+        .limit(200)
+    )
+    for media, source_status, raw_metadata in media_result.all():
+        try:
+            metadata = json.loads(raw_metadata or "{}")
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if str(metadata.get("contributor_id") or "") != str(user.id):
+            continue
+        recent.append({
+            "id": str(media.id),
+            "title": media.title,
+            "kind": "audio",
+            "genre": media.genre,
+            "status": source_status.value if hasattr(source_status, "value") else str(source_status),
+            "created_at": media.created_at.isoformat() if media.created_at else "",
+        })
+
+    recent.sort(key=lambda item: item["created_at"], reverse=True)
+    totals = {
+        "total": len(recent),
+        "texts": sum(1 for item in recent if item["kind"] == "text"),
+        "recordings": sum(1 for item in recent if item["kind"] == "audio"),
+        "pending": sum(1 for item in recent if item["status"] == "pending"),
+        "approved": sum(1 for item in recent if item["status"] == "approved"),
+        "rejected": sum(1 for item in recent if item["status"] == "rejected"),
+        "taken_down": sum(1 for item in recent if item["status"] == "taken_down"),
+    }
+    return {"totals": totals, "recent": recent[:30]}
