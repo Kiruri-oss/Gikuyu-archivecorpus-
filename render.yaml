@@ -1,12 +1,12 @@
-# Free-tier deployment blueprint.
-# PostgreSQL metadata in Supabase; file storage may use Firebase or S3-compatible storage.
-# Render's free PostgreSQL expires after 30 days, so it is not used as the archive database.
 services:
   - type: web
     name: gikuyu-archive-api
     runtime: docker
-    rootDir: backend
-    dockerfilePath: ./Dockerfile
+    # Use the repository root as the Docker build context. The Dockerfile
+    # lives under backend/; keeping the context at the root avoids the
+    # previous Render service's invalid "backend " context path.
+    dockerContext: .
+    dockerfilePath: ./backend/Dockerfile
     plan: free
     healthCheckPath: /health
     autoDeploy: true
@@ -25,9 +25,17 @@ services:
         value: https://gikuyu-archivecorpus.vercel.app
       - key: BACKEND_URL
         value: https://gikuyu-archive-api.onrender.com
-      - key: FIREBASE_PROJECT_ID
+      - key: S3_ENDPOINT
         sync: false
-      - key: FIREBASE_STORAGE_BUCKET
+      - key: S3_ACCESS_KEY
         sync: false
-      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+      - key: S3_SECRET_KEY
         sync: false
+      - key: S3_BUCKET_AUDIO
+        value: gikuyu-archive-corpus
+      - key: S3_BUCKET_TEXT
+        value: gikuyu-archive-corpus
+      - key: S3_REGION
+        value: auto
+      - key: S3_USE_SSL
+        value: "true"
