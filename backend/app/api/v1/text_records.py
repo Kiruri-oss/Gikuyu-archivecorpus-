@@ -28,13 +28,20 @@ async def list_text_records(
         select(TextRecord)
         .options(selectinload(TextRecord.source))
         .join(Source, TextRecord.source_id == Source.id)
-        .where(Source.status == SourceStatus.APPROVED)
+        .where(
+            Source.status == SourceStatus.APPROVED,
+            TextRecord.language_code == "ki",
+            TextRecord.allow_public_display.is_(True),
+        )
         .order_by(TextRecord.created_at.desc())
         .limit(limit)
         .offset(offset)
     )
+    # The public archive is Gĩkũyũ-only; reject explicit requests for other languages.
+    if language_code and language_code.strip().lower() != "ki":
+        return []
     if language_code:
-        stmt = stmt.where(TextRecord.language_code == language_code.lower())
+        stmt = stmt.where(TextRecord.language_code == "ki")
     if dialect:
         stmt = stmt.where(TextRecord.dialect == dialect)
     result = await db.execute(stmt)
@@ -46,7 +53,12 @@ async def get_text_record(record_id: uuid.UUID, db: DbSession) -> TextRecordRead
     stmt = (
         select(TextRecord)
         .join(Source, TextRecord.source_id == Source.id)
-        .where(TextRecord.id == record_id, Source.status == SourceStatus.APPROVED)
+        .where(
+            TextRecord.id == record_id,
+            TextRecord.language_code == "ki",
+            TextRecord.allow_public_display.is_(True),
+            Source.status == SourceStatus.APPROVED,
+        )
     )
     result = await db.execute(stmt)
     record = result.scalar_one_or_none()
@@ -64,8 +76,8 @@ async def create_text_record(
             status_code=422,
             detail="Confirm that you have the right to contribute this text and consent to its storage for review.",
         )
-    if not payload.language_confirmed:
-        raise HTTPException(status_code=422, detail="Confirm that this text is Gĩkũyũ language material.")
+    if not payload.language_confirmed or payload.language_code.strip().lower() != "ki":
+        raise HTTPException(status_code=422, detail="Only confirmed Gĩkũyũ (language code ki) material may enter this corpus.")
 
     normalized_body = payload.body.replace("\r\n", "\n").strip()
     digest = hashlib.sha256(normalized_body.encode("utf-8")).hexdigest()
