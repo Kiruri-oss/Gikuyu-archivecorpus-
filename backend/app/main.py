@@ -17,7 +17,7 @@ from app.crawlers.catalog import seed_curated_sources
 from app.db.session import AsyncSessionLocal, engine
 from sqlalchemy import text, select
 from app.models.text_record import TextRecord
-from app.services.wikimedia_import import import_random_wikipedia_pages
+from app.services.wikimedia_import import import_gikuyu_bible, import_random_wikipedia_pages
 
 settings = get_settings()
 configure_logging(settings.DEBUG)
@@ -28,23 +28,21 @@ _initial_import_task: asyncio.Task | None = None
 
 
 async def _seed_initial_gikuyu_corpus() -> None:
-    """Bootstrap an empty archive from Gĩkũyũ Wikipedia under CC BY-SA 4.0."""
+    """Populate the archive with licensed Gĩkũyũ texts; do not depend on Wikipedia alone."""
     try:
         async with AsyncSessionLocal() as db:
             existing = await db.execute(select(TextRecord.id).limit(1))
             if existing.scalar_one_or_none():
                 logger.info("app.initial_corpus_seed_skipped", reason="archive already contains text")
                 return
-            result = await import_random_wikipedia_pages(db, "ki", 50)
+            bible_result = await import_gikuyu_bible(db)
             await db.commit()
-            logger.info(
-                "app.initial_corpus_seed_finished",
-                requested=result.requested,
-                imported=result.imported,
-                skipped_non_gikuyu=result.skipped_non_gikuyu,
-                skipped_empty=result.skipped_empty,
-                skipped_duplicate_text=result.skipped_duplicate_text,
-            )
+            logger.info("app.initial_bible_import_finished", imported=bible_result["imported"], skipped=bible_result["skipped"])
+            count = await db.execute(select(TextRecord.id).limit(1))
+            if count.scalar_one_or_none() is None:
+                result = await import_random_wikipedia_pages(db, "ki", 50)
+                await db.commit()
+                logger.info("app.initial_corpus_seed_finished", requested=result.requested, imported=result.imported, skipped_non_gikuyu=result.skipped_non_gikuyu, skipped_empty=result.skipped_empty, skipped_duplicate_text=result.skipped_duplicate_text)
     except Exception as exc:
         logger.warning("app.initial_corpus_seed_failed", error=str(exc))
 
