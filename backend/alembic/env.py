@@ -10,7 +10,16 @@ from app.core.config import get_settings
 
 config = context.config
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))
+
+# ConfigParser treats '%' as interpolation syntax. Escape percent characters
+# in encoded credentials before putting the URL into Alembic's config.
+# Use asyncpg explicitly, matching the backend's runtime database engine.
+database_url = str(settings.DATABASE_URL)
+if database_url.startswith("postgres://"):
+    database_url = "postgresql+asyncpg://" + database_url[len("postgres://"):]
+elif database_url.startswith("postgresql://"):
+    database_url = "postgresql+asyncpg://" + database_url[len("postgresql://"):]
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
