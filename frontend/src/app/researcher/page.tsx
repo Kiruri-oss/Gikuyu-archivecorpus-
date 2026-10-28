@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useState } from "react";
 
 type ExportFormat = "csv" | "jsonl" | "audio";
@@ -49,6 +50,7 @@ export default function ResearcherPage() {
   }
 
   return (
+    <ProtectedRoute roles={["researcher", "reviewer", "admin"]}>
     <div className="mx-auto max-w-3xl space-y-7 py-8 sm:py-12">
       <header className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-earth-700">Researcher workspace</p><h1 className="text-3xl font-bold text-earth-900 sm:text-4xl">Export the Gĩkũyũ corpus</h1><p className="leading-7 text-gray-600">Download source-traceable archive records in CSV or JSONL. Each export is filtered by both your intended use and the stored permissions on each record. Records with unknown rights are excluded from reuse datasets.</p></header>
       {error && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">{error}<p className="mt-2"><Link href="/auth/login" className="font-semibold underline underline-offset-4">Sign in</Link> with a researcher account if needed.</p></div>}
@@ -61,5 +63,6 @@ export default function ResearcherPage() {
       </section>
       <p className="text-sm leading-6 text-gray-500">WAV/audio files remain in archive storage and are not bundled into these text exports yet. Access requires a researcher account and is limited by each record&apos;s permissions. <Link href="/about" className="font-semibold text-earth-700 underline underline-offset-4">About the archive</Link>.</p>
     </div>
+    </ProtectedRoute>
   );
 }

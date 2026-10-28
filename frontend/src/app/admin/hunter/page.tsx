@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 type HunterStatus = {
   status: string;
@@ -75,6 +76,7 @@ export default function AdminHunterPage() {
   }
 
   return (
+    <ProtectedRoute roles={["admin"]}>
     <section className="mx-auto max-w-4xl space-y-7 py-8 sm:py-12">
       <header className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-earth-700">Administrator tools</p><h1 className="text-3xl font-bold text-earth-900 sm:text-4xl">Gĩkũyũ Hunter control</h1><p className="leading-7 text-gray-600">Run the bounded source hunter, inspect its latest result and send collected records to the source review queue. The Hunter is configured to discover Gĩkũyũ pages across relevant public sources, obey robots.txt, record provenance and keep unknown-rights material out of AI-training and commercial exports.</p></header>
       
@@ -100,5 +102,6 @@ export default function AdminHunterPage() {
       <div className="flex flex-wrap gap-4 text-sm"><Link href="/admin/sources" className="font-semibold text-earth-700 underline underline-offset-4">Review collected sources</Link><Link href="/admin/takedowns" className="font-semibold text-earth-700 underline underline-offset-4">Open takedown queue</Link></div>
       <p className="text-sm leading-6 text-gray-500">A crawl is capped at 500 pages by default, 30 pages per host and 40 discovered hosts per run. A one-second minimum delay is applied between requests to the same host. The scheduler also runs every six hours when the production backend is configured and running.</p>
     </section>
+    </ProtectedRoute>
   );
 }

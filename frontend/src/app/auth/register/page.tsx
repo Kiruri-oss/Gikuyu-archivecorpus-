@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 import { api, ApiError } from "@/lib/api";
 
 type User = { email: string; full_name: string };
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const { status } = useAuth();
+  useEffect(() => { if (status === "authenticated") router.replace("/account"); }, [status, router]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,6 +44,9 @@ export default function RegisterPage() {
       setLoading(false);
     }
   }
+
+  if (status === "loading") return <div role="status" className="mx-auto max-w-2xl py-16 text-center text-sm text-gray-500">Checking your archive session…</div>;
+  if (status === "authenticated") return <div role="status" className="mx-auto max-w-2xl py-16 text-center text-sm text-gray-500">You are already signed in. Opening your archive…</div>;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-10 sm:py-14">

@@ -26,13 +26,13 @@ export default function LanguagesPage() {
       </div>
       <section className="rounded-2xl border border-earth-500/20 bg-earth-50 p-6 sm:p-8">
         <h2 className="text-xl font-semibold text-earth-900">Current release status</h2>
-        <p className="mt-3 leading-7 text-gray-700">The public deployment currently exposes reference discovery and a device-local reading list. The repository now includes the Gĩkũyũ-only Hunter, persistent source/text models, audio contribution endpoints, transcription and annotation APIs, takedown intake, orthography suggestions and filtered dataset export code. The backend is not yet connected to production database and object-storage services, so these backend workflows cannot honestly be described as live on the public site.</p>
+        <p className="mt-3 leading-7 text-gray-700">This archive brings source discovery, persistent text and audio contributions, review workflows, Gĩkũyũ transcription and annotation, orthography tools, and purpose-filtered research exports into one language-focused workspace. Public records must pass review and carry provenance and permissions; member submissions remain private until approved. The amount of material currently published depends on what has actually been collected and approved, so empty collections are shown honestly rather than filled with sample records.</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href="/search" className="inline-flex rounded-lg bg-earth-900 px-5 py-3 font-semibold text-white">Explore available material</Link>
           <Link href="/contribute" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Contribute text or audio</Link>
           <Link href="/orthography" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Check orthography</Link>
           <Link href="/transcribe" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Transcribe audio</Link>
-          <Link href="/research" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Research datasets</Link>
+          <Link href="/researcher" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Research datasets</Link>
           <Link href="/takedown" className="inline-flex rounded-lg border border-earth-500 px-5 py-3 font-semibold text-earth-900">Request correction or removal</Link>
         </div>
       </section>

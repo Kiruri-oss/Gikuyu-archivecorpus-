@@ -3,11 +3,69 @@
 @tailwind utilities;
 
 @layer base {
-  :focus-visible {
-    outline: 2px solid theme("colors.earth.500");
-    outline-offset: 2px;
+  :root {
+    color-scheme: light;
+    --archive-ink: #30271e;
+    --archive-paper: #faf9f6;
   }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+  }
+
   body {
     @apply bg-white text-gray-900 antialiased;
+    min-height: 100vh;
+    font-feature-settings: "ss01" on;
+  }
+
+  h1, h2, h3, h4 {
+    @apply tracking-tight;
+    text-wrap: pretty;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 3px solid theme("colors.earth.500");
+    outline-offset: 3px;
+  }
+
+  input, textarea, select {
+    color: #171717;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #737373;
+    opacity: 1;
+  }
+
+  button, a, input, textarea, select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background: #e8dbc6;
+    color: #30271e;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
