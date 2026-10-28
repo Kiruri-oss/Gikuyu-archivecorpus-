@@ -12,6 +12,7 @@ from app.core.logging import get_logger
 from app.models.source import Source, SourceStatus, SourceType
 from app.models.text_record import TextRecord
 from app.services.indexing import search_index
+from app.services.language_detector import language_detector
 
 logger = get_logger(__name__)
 
@@ -33,6 +34,7 @@ class ImportResult:
     skipped_existing_source: int = 0
     skipped_duplicate_text: int = 0
     skipped_empty: int = 0
+    skipped_non_gikuyu: int = 0
 
 
 async def _get_random_pages(client: Any, host: str, limit: int) -> list[dict[str, Any]]:
@@ -92,6 +94,13 @@ async def import_random_wikipedia_pages(
             result.skipped_empty += 1
             continue
 
+        # A Gĩkũyũ Wikipedia host is not proof that every page body is Gĩkũyũ.
+        # Reject uncertain/foreign-language pages rather than polluting this single-language corpus.
+        detected_language, confidence = language_detector.detect(body)
+        if detected_language != "ki" or confidence < 0.55:
+            result.skipped_non_gikuyu += 1
+            continue
+
         existing_source = await db.execute(select(Source.id).where(Source.url == source_url))
         if existing_source.scalar_one_or_none():
             result.skipped_existing_source += 1
@@ -115,6 +124,7 @@ async def import_random_wikipedia_pages(
             "license": WIKIMEDIA_LICENSE,
             "license_url": WIKIMEDIA_LICENSE_URL,
             "retrieval_method": "MediaWiki API generator=random",
+            "language_detection": {"language": detected_language, "confidence": confidence},
         }
         source = Source(
             url=source_url,
@@ -144,7 +154,8 @@ async def import_random_wikipedia_pages(
             # consent for this project's model-training or commercial dataset products.
             allow_ai_training=False,
             allow_commercial_use=False,
-            notes=f"Imported from {source_url}; verify attribution and current source licence before reuse.",
+            lang_score=confidence,
+            notes=f"Imported from {source_url}; Gĩkũyũ language filter passed ({confidence:.2f}). CC BY-SA attribution retained.",
         )
         db.add(record)
         await db.flush()
