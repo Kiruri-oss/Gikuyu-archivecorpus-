@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/lib/api";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import type { Media, Segment } from "@/types";
 
 type MediaDetail = Media & { file_url: string };
@@ -181,6 +182,7 @@ export default function TranscribePage() {
   }
 
   return (
+    <ProtectedRoute roles={["contributor", "reviewer", "admin"]}>
     <section className="mx-auto max-w-4xl space-y-7 py-8 sm:py-12">
       <header className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-earth-700">Transcription and annotation</p>
@@ -217,7 +219,8 @@ export default function TranscribePage() {
       {error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm leading-6 text-red-900">{error}</p>}
       {notice && <p role="status" className="rounded-lg border border-green-300 bg-green-50 p-4 text-sm leading-6 text-green-900">{notice}</p>}
       <p className="text-sm leading-6 text-gray-500">Transcript records are not automatically marked verified. A reviewer should confirm spelling, timestamps and translation before a segment is treated as a verified training example.</p>
-      <Link href="/login" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Sign in to contribute or correct a transcript</Link>
+      <Link href="/auth/login" className="text-sm font-semibold text-earth-700 underline underline-offset-4">Sign in to contribute or correct a transcript</Link>
     </section>
+    </ProtectedRoute>
   );
 }
