@@ -93,7 +93,6 @@ async def my_archive_summary(db: DbSession, user: CurrentUser) -> dict:
         .join(Source, TextRecord.source_id == Source.id)
         .where(TextRecord.contributor_id == user.id, TextRecord.language_code == "ki")
         .order_by(TextRecord.created_at.desc())
-        .limit(200)
     )
 
     recent: list[dict] = []
@@ -119,7 +118,6 @@ async def my_archive_summary(db: DbSession, user: CurrentUser) -> dict:
             Media.language_code == "ki",
         )
         .order_by(Media.created_at.desc())
-        .limit(200)
     )
     for media, source_status, raw_metadata in media_result.all():
         try:
