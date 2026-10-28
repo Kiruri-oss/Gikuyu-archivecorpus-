@@ -22,6 +22,6 @@ class Takedown(Base, TimestampMixin):
     requester_name: Mapped[str] = mapped_column(String(200), nullable=False)
     requester_email: Mapped[str] = mapped_column(String(255), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[TakedownStatus] = mapped_column(Enum(TakedownStatus), default=TakedownStatus.RECEIVED)
+    status: Mapped[TakedownStatus] = mapped_column(Enum(TakedownStatus, values_callable=lambda enum_cls: [member.value for member in enum_cls]), default=TakedownStatus.RECEIVED)
     actioned_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
     admin_notes: Mapped[str | None] = mapped_column(Text)
