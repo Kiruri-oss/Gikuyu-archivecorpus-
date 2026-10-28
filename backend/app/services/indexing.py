@@ -37,16 +37,20 @@ class SearchIndexService:
                 resp.raise_for_status()
                 logger.info("search.index_ready", index=index)
 
-    async def index_document(self, index: str, document: dict) -> None:
-        if not self.enabled:
+    async def index_documents(self, index: str, documents: list[dict]) -> None:
+        """Index a batch together to avoid one network request per corpus record."""
+        if not self.enabled or not documents:
             return
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{self.base_url}/indexes/{index}/documents",
                 headers=self.headers,
-                json=[document],
+                json=documents,
             )
             resp.raise_for_status()
+
+    async def index_document(self, index: str, document: dict) -> None:
+        await self.index_documents(index, [document])
 
     async def delete_document(self, index: str, doc_id: str) -> None:
         if not self.enabled:
