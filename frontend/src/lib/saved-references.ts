@@ -1,5 +1,6 @@
 export interface SavedReference {
   id: string;
+  collection_id?: string;
   title: string;
   source_name: string;
   source_url: string;
