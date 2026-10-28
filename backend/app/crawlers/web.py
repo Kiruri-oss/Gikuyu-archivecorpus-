@@ -40,6 +40,15 @@ class WebCrawler(BaseCrawler):
             target_host = (urlparse(absolute).hostname or "").lower()
             label = anchor.get_text(" ", strip=True).lower()
             searchable = f"{label} {absolute.lower()}"
+            # This is a Gĩkũyũ-only corpus. Never spider another language's
+            # Wikipedia/Wiktionary edition merely because its page mentions Kikuyu.
+            # The ki editions remain valid discovery sources.
+            wiki_host = target_host.removeprefix("www.")
+            if (
+                (wiki_host.endswith(".wikipedia.org") and wiki_host != "ki.wikipedia.org")
+                or (wiki_host.endswith(".wiktionary.org") and wiki_host != "ki.wiktionary.org")
+            ):
+                continue
             # Same-site links are crawled normally. Relevant cross-site links
             # expand discovery beyond the original seed hosts without spidering
             # every unrelated outbound link on the public web.
